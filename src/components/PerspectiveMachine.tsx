@@ -14,10 +14,40 @@ import {
 export type Answer = { voice: string; text: string };
 export type Point = { x: number; y: number };
 
+type Attempt = {
+  kind: "answer";
+  /** Which run wrote it, so a run's rewrites collapse into one block. */
+  run: number;
+  answer: Answer;
+  jev: JevScore;
+  gap?: number;
+  hit?: boolean;
+};
+
 type Turn =
-  | { kind: "question"; text: string }
-  | { kind: "answer"; answer: Answer; jev: JevScore; gap?: number; hit?: boolean }
-  | { kind: "note"; text: string };
+  { kind: "question"; text: string } | Attempt | { kind: "note"; text: string };
+
+/** Consecutive attempts from one run, so only the last one is shown. */
+type Block =
+  | { kind: "other"; turn: Turn; key: number }
+  | { kind: "attempts"; run: number; attempts: Attempt[]; key: number };
+
+function blocksOf(turns: Turn[]): Block[] {
+  const blocks: Block[] = [];
+  turns.forEach((turn, key) => {
+    const last = blocks[blocks.length - 1];
+    if (turn.kind !== "answer") {
+      blocks.push({ kind: "other", turn, key });
+      return;
+    }
+    if (last?.kind === "attempts" && last.run === turn.run) {
+      last.attempts.push(turn);
+      return;
+    }
+    blocks.push({ kind: "attempts", run: turn.run, attempts: [turn], key });
+  });
+  return blocks;
+}
 
 type Event = {
   type: "answer" | "frame" | "nudging" | "done" | "error";
@@ -45,6 +75,31 @@ async function* readEvents(response: Response) {
   }
 }
 
+function Attempt({ attempt, muted }: { attempt: Attempt; muted?: boolean }) {
+  const { answer, jev, gap, hit } = attempt;
+  return (
+    <div
+      className={
+        muted ? "border-l border-[var(--line)] pl-4 opacity-60" : undefined
+      }
+    >
+      <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
+        {answer.voice}
+      </p>
+      <p className="max-w-[48ch] text-[15px] leading-[1.75]">{answer.text}</p>
+      <p className="mt-3 font-mono text-[11px] leading-relaxed text-[var(--faint)]">
+        {`jev ${jev.x.toFixed(2)}, ${jev.y.toFixed(2)} · confidence ${Math.round(jev.confidence * 100)}%`}
+        {jev.hedging ? " · hedging" : ""}
+        {gap !== undefined
+          ? hit
+            ? " · inside the puck"
+            : ` · ${gap} away`
+          : ""}
+      </p>
+    </div>
+  );
+}
+
 export default function PerspectiveMachine() {
   const feedRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +121,10 @@ export default function PerspectiveMachine() {
   );
   // Lets the user call off the loop mid-nudge and keep what is on screen.
   const running = useRef<AbortController | null>(null);
+  // Each ask or drag is a run; its rewrites collapse under the answer it
+  // arrived at, and can be opened to read how it got there.
+  const runs = useRef(0);
+  const [opened, setOpened] = useState<number[]>([]);
 
   useEffect(() => {
     feedRef.current?.scrollTo({
@@ -74,86 +133,93 @@ export default function PerspectiveMachine() {
     });
   }, [turns, note, stage]);
 
-  const run = useCallback(
-    async (body: object, nextQuestion: string) => {
-      const controller = new AbortController();
-      running.current = controller;
-      setBusy(true);
-      setNote(null);
-      setStage({ label: "Writing an answer", attempt: 0 });
-      try {
-        const response = await fetch("/api/steer", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error(await response.text());
+  const run = useCallback(async (body: object, nextQuestion: string) => {
+    const id = (runs.current += 1);
+    const controller = new AbortController();
+    running.current = controller;
+    setBusy(true);
+    setNote(null);
+    setStage({ label: "Writing an answer", attempt: 0 });
+    // The server keeps whichever attempt got closest, since a nudge can
+    // overshoot; the screen follows the same one.
+    let closest = Infinity;
+    try {
+      const response = await fetch("/api/steer", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(await response.text());
 
-        for await (const event of readEvents(response)) {
-          if (event.type === "frame" && event.frame) {
-            const { schools, framework, x, y } = event.frame;
-            setFrame(event.frame);
-            setTurns((current) => [
-              ...current,
-              {
-                kind: "note",
-                text: [
-                  framework
-                    ? `Framework: ${framework}`
-                    : schools.length
-                      ? `Schools of thought: ${schools.join(", ")}`
-                      : "",
-                  `Axes: ${x.min} ↔ ${x.max} · ${y.min} ↔ ${y.max}`,
-                ]
-                  .filter(Boolean)
-                  .join("\n"),
-              },
-            ]);
-            setStage({ label: "Jev is placing the answer", attempt: 0 });
-          }
-          if (event.type === "nudging") {
-            setStage({
-              label:
-                event.attempt === 1
-                  ? "Rewriting toward the puck"
-                  : "Not there yet, rewriting again",
-              attempt: event.attempt ?? 0,
-            });
-          }
-          if (event.type === "answer" && event.answer && event.jev) {
+      for await (const event of readEvents(response)) {
+        if (event.type === "frame" && event.frame) {
+          const { schools, framework, x, y } = event.frame;
+          setFrame(event.frame);
+          setTurns((current) => [
+            ...current,
+            {
+              kind: "note",
+              text: [
+                framework
+                  ? `Framework: ${framework}`
+                  : schools.length
+                    ? `Schools of thought: ${schools.join(", ")}`
+                    : "",
+                `Axes: ${x.min} ↔ ${x.max} · ${y.min} ↔ ${y.max}`,
+              ]
+                .filter(Boolean)
+                .join("\n"),
+            },
+          ]);
+          setStage({ label: "Jev is placing the answer", attempt: 0 });
+        }
+        if (event.type === "nudging") {
+          setStage({
+            label:
+              event.attempt === 1
+                ? "Rewriting toward the puck"
+                : "Not there yet, rewriting again",
+            attempt: event.attempt ?? 0,
+          });
+        }
+        if (event.type === "answer" && event.answer && event.jev) {
+          const reached = event.gap ?? Infinity;
+          if (event.attempt === 0 || reached < closest) {
+            closest = event.attempt === 0 ? Infinity : reached;
             setAnswer(event.answer);
             setJev(event.jev);
-            setQuestion(nextQuestion);
-            if (event.attempt === 0) setPuck({ x: event.jev.x, y: event.jev.y });
-            const { answer: got, jev: scored, gap, hit } = event;
-            setTurns((current) => [
-              ...current,
-              { kind: "answer", answer: got, jev: scored, gap, hit },
-            ]);
-            setNote(null);
-            setStage(
-              hit === false ? { label: "Jev is re-reading it", attempt: 0 } : null,
-            );
           }
-          if (event.type === "done" && event.hit === false) {
-            setNote(
-              `Closest it got was ${event.gap} away — the puck is asking for a position the model will not hold.`,
-            );
-          }
-          if (event.type === "error") setNote(event.error ?? "Something broke");
+          setQuestion(nextQuestion);
+          if (event.attempt === 0) setPuck({ x: event.jev.x, y: event.jev.y });
+          const { answer: got, jev: scored, gap, hit } = event;
+          setTurns((current) => [
+            ...current,
+            { kind: "answer", run: id, answer: got, jev: scored, gap, hit },
+          ]);
+          setNote(null);
+          setStage(
+            hit === false
+              ? { label: "Jev is re-reading it", attempt: 0 }
+              : null,
+          );
         }
-      } catch (error) {
-        if (controller.signal.aborted) setNote("Stopped");
-        else setNote(error instanceof Error ? error.message : "Something broke");
-      } finally {
-        running.current = null;
-        setStage(null);
-        setBusy(false);
+        if (event.type === "done" && event.hit === false) {
+          setNote(
+            `Closest it got was ${event.gap} away — the puck is asking for a position the model will not hold.`,
+          );
+        }
+        if (event.type === "error") setNote(event.error ?? "Something broke");
       }
-    },
-    [],
-  );
+    } catch (error) {
+      if (controller.signal.aborted) setNote("Stopped");
+      else setNote(error instanceof Error ? error.message : "Something broke");
+    } finally {
+      running.current = null;
+      setStage(null);
+      setBusy(false);
+    }
+  }, []);
 
   const stop = useCallback(() => {
     running.current?.abort();
@@ -195,8 +261,7 @@ export default function PerspectiveMachine() {
   // In compass mode the plane is known before anything is asked.
   const shown = frame ?? (mode === "compass" ? POLITICAL_COMPASS : null);
   // How far the answer on screen still is from where the puck sits.
-  const gap =
-    jev && puck ? Math.hypot(jev.x - puck.x, jev.y - puck.y) : null;
+  const gap = jev && puck ? Math.hypot(jev.x - puck.x, jev.y - puck.y) : null;
 
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden lg:flex-row">
@@ -227,41 +292,66 @@ export default function PerspectiveMachine() {
             </p>
           )}
 
-          {turns.map((turn, index) =>
-            turn.kind === "question" ? (
-              <div key={index} className="flex justify-end">
-                <p className="max-w-[80%] rounded-2xl rounded-br-md bg-[var(--bubble)] px-4 py-2.5 text-[14px] leading-relaxed">
-                  {turn.text}
+          {blocksOf(turns).map((block) => {
+            if (block.kind === "other") {
+              const turn = block.turn;
+              if (turn.kind === "question") {
+                return (
+                  <div key={block.key} className="flex justify-end">
+                    <p className="max-w-[80%] rounded-2xl rounded-br-md bg-[var(--bubble)] px-4 py-2.5 text-[14px] leading-relaxed">
+                      {turn.text}
+                    </p>
+                  </div>
+                );
+              }
+              return (
+                <p
+                  key={block.key}
+                  className="whitespace-pre-line font-mono text-[11px] leading-relaxed text-[var(--faint)]"
+                >
+                  {turn.kind === "note" ? turn.text : ""}
                 </p>
+              );
+            }
+
+            // A nudge can overshoot, so the run's answer is its closest
+            // attempt, not its last one.
+            const arrived = block.attempts.reduce((best, attempt) =>
+              (attempt.gap ?? Infinity) < (best.gap ?? Infinity)
+                ? attempt
+                : best,
+            );
+            const earlier = block.attempts.filter((a) => a !== arrived);
+            const isOpen = opened.includes(block.run);
+            return (
+              <div key={block.key} className="flex flex-col gap-6">
+                {earlier.length > 0 && (
+                  <div className="flex flex-col gap-6">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpened((current) =>
+                          isOpen
+                            ? current.filter((id) => id !== block.run)
+                            : [...current, block.run],
+                        )
+                      }
+                      className="self-start font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)] transition-colors hover:text-[var(--foreground)]"
+                    >
+                      {`${isOpen ? "▾" : "▸"} ${earlier.length} rewrite${
+                        earlier.length === 1 ? "" : "s"
+                      } on the way`}
+                    </button>
+                    {isOpen &&
+                      earlier.map((attempt, index) => (
+                        <Attempt key={index} attempt={attempt} muted />
+                      ))}
+                  </div>
+                )}
+                <Attempt attempt={arrived} />
               </div>
-            ) : turn.kind === "note" ? (
-              <p
-                key={index}
-                className="whitespace-pre-line font-mono text-[11px] leading-relaxed text-[var(--faint)]"
-              >
-                {turn.text}
-              </p>
-            ) : (
-              <div key={index}>
-                <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
-                  {turn.answer.voice}
-                </p>
-                <p className="max-w-[48ch] text-[15px] leading-[1.75]">
-                  {turn.answer.text}
-                </p>
-                <p className="mt-3 font-mono text-[11px] leading-relaxed text-[var(--faint)]">
-                  jev {turn.jev.x.toFixed(2)}, {turn.jev.y.toFixed(2)} ·
-                  confidence {Math.round(turn.jev.confidence * 100)}%
-                  {turn.jev.hedging ? " · hedging" : ""}
-                  {turn.gap !== undefined
-                    ? turn.hit
-                      ? " · inside the puck"
-                      : ` · ${turn.gap} away`
-                    : ""}
-                </p>
-              </div>
-            ),
-          )}
+            );
+          })}
 
           {stage && (
             <div className="animate-pulse">
@@ -366,7 +456,6 @@ export default function PerspectiveMachine() {
               <Plane
                 puck={puck}
                 jev={jev}
-                radius={RADIUS}
                 busy={busy}
                 onMove={(point) =>
                   setPuck({ x: clamp01(point.x), y: clamp01(point.y) })
