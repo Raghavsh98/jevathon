@@ -8,9 +8,10 @@
  * Usage:
  *   LLM_API_KEY=... JEV_API_KEY=... node scripts/precompute.mjs
  *   LLM_PROVIDER=anthropic node scripts/precompute.mjs
+ *   JEV_API_KEY=... node scripts/precompute.mjs --score-only   # keep texts, re-score
  */
 
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -25,11 +26,36 @@ const AXES = {
 };
 
 const JEV_URL = "https://api.typesafe.ai/v1/systemone";
-const JEV_MODEL = "jev-latest";
+const JEV_MODEL = process.env.JEV_MODEL ?? "jev-latest";
+const SCORE_ONLY = process.argv.includes("--score-only");
 
-const provider =
-  process.env.LLM_PROVIDER ??
-  (process.env.LLM_API_KEY?.startsWith("sk-ant") ? "anthropic" : "openai");
+// Ordered rubrics: Jev returns a fractional index into these, which we
+// normalise back to 0-1 for the grid.
+const RUBRICS = {
+  x: [
+    "purely individual: only the asker's own life, choices, and feelings",
+    "mostly individual, with passing reference to others",
+    "mostly collective: other people's stake is central",
+    "purely collective: family, community, society, or everyone who is implicated",
+  ],
+  y: [
+    "purely material: money, runway, numbers, market, risk",
+    "mostly material, with some appeal to meaning",
+    "mostly spiritual: meaning, identity, calling",
+    "purely spiritual: the soul, dharma, who you are becoming",
+  ],
+};
+
+function detectProvider() {
+  if (process.env.LLM_PROVIDER) return process.env.LLM_PROVIDER;
+  const key = process.env.LLM_API_KEY ?? "";
+  if (key.startsWith("sk-ant")) return "anthropic";
+  if (key.startsWith("AIza")) return "gemini";
+  if (key.startsWith("gsk_")) return "groq";
+  return "openai";
+}
+
+const provider = detectProvider();
 
 function positions() {
   const cells = [];
@@ -74,24 +100,48 @@ function buildPrompt(cells) {
   ].join("\n");
 }
 
-async function callOpenAI(prompt) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+// OpenAI-compatible chat completions; Groq speaks the same protocol.
+async function callOpenAI(prompt, { url, model, label }) {
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${process.env.LLM_API_KEY}`,
     },
     body: JSON.stringify({
-      model: process.env.LLM_MODEL ?? "gpt-4o",
+      model,
       response_format: { type: "json_object" },
       messages: [{ role: "user", content: prompt }],
     }),
   });
   if (!response.ok) {
-    throw new Error(`OpenAI ${response.status}: ${await response.text()}`);
+    throw new Error(`${label} ${response.status}: ${await response.text()}`);
   }
   const body = await response.json();
   return JSON.parse(body.choices[0].message.content);
+}
+
+async function callGemini(prompt) {
+  const model = process.env.LLM_MODEL ?? "gemini-2.0-flash";
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-goog-api-key": process.env.LLM_API_KEY,
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" },
+      }),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Gemini ${response.status}: ${await response.text()}`);
+  }
+  const body = await response.json();
+  return JSON.parse(body.candidates[0].content.parts[0].text);
 }
 
 async function callAnthropic(prompt) {
@@ -120,10 +170,25 @@ async function callAnthropic(prompt) {
 
 async function writeAnswers(cells) {
   const prompt = buildPrompt(cells);
-  const result =
-    provider === "anthropic"
-      ? await callAnthropic(prompt)
-      : await callOpenAI(prompt);
+  const providers = {
+    anthropic: () => callAnthropic(prompt),
+    gemini: () => callGemini(prompt),
+    groq: () =>
+      callOpenAI(prompt, {
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        model: process.env.LLM_MODEL ?? "llama-3.3-70b-versatile",
+        label: "Groq",
+      }),
+    openai: () =>
+      callOpenAI(prompt, {
+        url: "https://api.openai.com/v1/chat/completions",
+        model: process.env.LLM_MODEL ?? "gpt-4o",
+        label: "OpenAI",
+      }),
+  };
+  const call = providers[provider];
+  if (!call) throw new Error(`Unknown LLM_PROVIDER: ${provider}`);
+  const result = await call();
   const answers = result.answers ?? result.responses;
   if (!Array.isArray(answers) || answers.length !== 16) {
     throw new Error(`Expected 16 answers, got ${answers?.length}`);
@@ -146,24 +211,23 @@ async function scoreWithJev(answer) {
         voice: answer.voice,
         axes: AXES,
       },
-      questions: [
-        {
-          id: "x",
+      questions: {
+        x: {
           type: "score",
-          question: `On a 0-1 scale, how far does this answer sit toward "${AXES.x.max}" rather than "${AXES.x.min}"?`,
+          instructions: `Does this answer frame the decision as one person's own life ("${AXES.x.min}") or as something embedded in other people ("${AXES.x.max}")?`,
+          criteria: RUBRICS.x,
         },
-        {
-          id: "y",
+        y: {
           type: "score",
-          question: `On a 0-1 scale, how far does this answer sit toward "${AXES.y.max}" rather than "${AXES.y.min}"?`,
+          instructions: `Is this answer grounded in "${AXES.y.min}" concerns or "${AXES.y.max}" ones?`,
+          criteria: RUBRICS.y,
         },
-        {
-          id: "hedging",
-          type: "yes_no",
-          question:
-            "Does this answer hedge — refuse to commit to a position, or present both sides as equally valid?",
+        hedging: {
+          type: "noul",
+          instructions:
+            "Does this answer hedge - refuse to commit to a position, or present both sides as equally valid?",
         },
-      ],
+      },
     }),
   });
   if (!response.ok) {
@@ -172,43 +236,37 @@ async function scoreWithJev(answer) {
   return response.json();
 }
 
+const round = (value) => Math.round(value * 100) / 100;
+
 function readJev(payload) {
-  const answers = payload.answers ?? payload.results ?? payload.questions ?? [];
-  const byId = Object.fromEntries(
-    answers.map((item) => [item.id ?? item.question_id, item]),
-  );
-  const value = (id, fallback) => {
-    const item = byId[id];
-    if (!item) return fallback;
-    const raw = item.answer ?? item.value ?? item.score ?? item.result;
-    if (typeof raw === "boolean") return raw;
-    if (typeof raw === "string") return raw.toLowerCase() === "yes";
-    return typeof raw === "number" ? raw : fallback;
-  };
-  const confidence = (id, fallback) => {
-    const item = byId[id];
-    const raw = item?.confidence ?? item?.probability;
-    return typeof raw === "number" ? raw : fallback;
-  };
+  const { answers } = payload;
+  const axis = (id) => round(answers[id].score / (RUBRICS[id].length - 1));
   return {
-    x: value("x", 0.5),
-    y: value("y", 0.5),
-    hedging: Boolean(value("hedging", false)),
-    confidence: Math.min(
-      confidence("x", 0.7),
-      confidence("y", 0.7),
-      confidence("hedging", 0.7),
-    ),
+    x: axis("x"),
+    y: axis("y"),
+    // noul is P(hedging), calibrated 0-1.
+    hedging: answers.hedging.noul > 0.5,
+    // How sure Jev is about where the answer sits. This is what the UI fades.
+    confidence: round(Math.min(answers.x.confidence, answers.y.confidence)),
     model: payload.model ?? JEV_MODEL,
   };
 }
 
+async function existingAnswers() {
+  const current = JSON.parse(await readFile(OUT, "utf8"));
+  return current.cells.map((cell) => ({ voice: cell.voice, text: cell.text }));
+}
+
 async function main() {
-  if (!process.env.LLM_API_KEY) throw new Error("LLM_API_KEY is not set");
   if (!process.env.JEV_API_KEY) throw new Error("JEV_API_KEY is not set");
+  if (!SCORE_ONLY && !process.env.LLM_API_KEY) {
+    throw new Error("LLM_API_KEY is not set (or pass --score-only)");
+  }
 
   const cells = positions();
-  const answers = await writeAnswers(cells);
+  const answers = SCORE_ONLY
+    ? await existingAnswers()
+    : await writeAnswers(cells);
   const scores = await Promise.all(
     answers.map((answer) => scoreWithJev(answer).then(readJev)),
   );

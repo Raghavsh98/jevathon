@@ -11,10 +11,32 @@ import {
 
 const START = { x: 0.5, y: 0.5 };
 
+// Jev's confidences sit in a narrow band, so stretch them across that band's
+// own range — otherwise every cell renders equally washed out and the
+// difference between a sure answer and an unsure one stops being visible.
+const confidences = perspectives.cells.map((cell) => cell.jev.confidence);
+const LOW = Math.min(...confidences);
+const HIGH = Math.max(...confidences);
+
+function certainty(confidence: number) {
+  return HIGH === LOW ? 1 : (confidence - LOW) / (HIGH - LOW);
+}
+
 function confidenceStyle(confidence: number) {
+  const sharp = certainty(confidence);
   return {
-    opacity: 0.35 + 0.65 * confidence,
-    filter: `blur(${(1 - confidence) * 3.2}px)`,
+    opacity: 0.45 + 0.55 * sharp,
+    filter: `blur(${(1 - sharp) * 2.4}px)`,
+  };
+}
+
+// The answer still has to be readable, so it carries the uncertainty more
+// gently than the grid labels do.
+function answerStyle(confidence: number) {
+  const sharp = certainty(confidence);
+  return {
+    opacity: 0.72 + 0.28 * sharp,
+    filter: `blur(${(1 - sharp) * 0.9}px)`,
   };
 }
 
@@ -183,7 +205,7 @@ export default function PerspectiveMachine() {
           </p>
           <p
             className="mt-4 text-[19px] leading-[1.65] transition-all duration-300"
-            style={confidenceStyle(active.jev.confidence)}
+            style={answerStyle(active.jev.confidence)}
           >
             {active.text}
           </p>

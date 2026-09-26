@@ -36,9 +36,16 @@ Arrow keys move the puck one cell at a time.
 Optional — the committed JSON is what the demo runs on.
 
 ```bash
+# rewrite all 16 answers, then score them
 LLM_API_KEY=... JEV_API_KEY=... npm run precompute
+
+# keep the answers, just re-score them with Jev
+JEV_API_KEY=... npm run precompute -- --score-only
 ```
 
-Set `LLM_PROVIDER=anthropic` for Claude, `QUESTION="..."` for a different
-question. The script logs the `model` field Jev returns, since `jev-latest`
-moves between versions.
+The provider is detected from the key shape — OpenAI, Anthropic, Gemini, and
+Groq are supported; override with `LLM_PROVIDER` / `LLM_MODEL`. Set
+`QUESTION="..."` for a different question.
+
+The script logs the `model` field Jev returns, since `jev-latest` moves between
+versions. The committed data was scored by `jev-1.13.0`.
