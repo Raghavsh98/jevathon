@@ -140,6 +140,9 @@ export default function PerspectiveMachine() {
     setBusy(true);
     setNote(null);
     setStage({ label: "Writing an answer", attempt: 0 });
+    // The server keeps whichever attempt got closest, since a nudge can
+    // overshoot; the screen follows the same one.
+    let closest = Infinity;
     try {
       const response = await fetch("/api/steer", {
         method: "POST",
@@ -181,8 +184,12 @@ export default function PerspectiveMachine() {
           });
         }
         if (event.type === "answer" && event.answer && event.jev) {
-          setAnswer(event.answer);
-          setJev(event.jev);
+          const reached = event.gap ?? Infinity;
+          if (event.attempt === 0 || reached < closest) {
+            closest = event.attempt === 0 ? Infinity : reached;
+            setAnswer(event.answer);
+            setJev(event.jev);
+          }
           setQuestion(nextQuestion);
           if (event.attempt === 0) setPuck({ x: event.jev.x, y: event.jev.y });
           const { answer: got, jev: scored, gap, hit } = event;
@@ -307,8 +314,14 @@ export default function PerspectiveMachine() {
               );
             }
 
-            const arrived = block.attempts[block.attempts.length - 1];
-            const earlier = block.attempts.slice(0, -1);
+            // A nudge can overshoot, so the run's answer is its closest
+            // attempt, not its last one.
+            const arrived = block.attempts.reduce((best, attempt) =>
+              (attempt.gap ?? Infinity) < (best.gap ?? Infinity)
+                ? attempt
+                : best,
+            );
+            const earlier = block.attempts.filter((a) => a !== arrived);
             const isOpen = opened.includes(block.run);
             return (
               <div key={block.key} className="flex flex-col gap-6">
