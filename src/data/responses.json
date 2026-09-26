@@ -1,0 +1,171 @@
+{
+  "question": "Should I quit my job to build my own thing?",
+  "axes": {
+    "x": { "min": "individual", "max": "collective" },
+    "y": { "min": "material", "max": "spiritual" }
+  },
+  "model": "static",
+  "generatedAt": null,
+  "cells": [
+    {
+      "id": "c-0-0",
+      "col": 0,
+      "row": 0,
+      "x": 0.125,
+      "y": 0.875,
+      "voice": "The inner call",
+      "text": "Yes. Something in you already left months ago. The job is now a costume you put on each morning, and every day you wear it the distance between who you are and what you do widens. Go, before the costume becomes the skin.",
+      "jev": { "x": 0.09, "y": 0.94, "hedging": false, "confidence": 0.91 }
+    },
+    {
+      "id": "c-1-0",
+      "col": 1,
+      "row": 0,
+      "x": 0.375,
+      "y": 0.875,
+      "voice": "The discipline of the craft",
+      "text": "Leaving is not the practice. Sitting down every day with no audience and no salary is the practice. If you cannot already do the work on the edges of your week, quitting will hand you time you have not yet learned how to hold.",
+      "jev": { "x": 0.33, "y": 0.79, "hedging": false, "confidence": 0.86 }
+    },
+    {
+      "id": "c-2-0",
+      "col": 2,
+      "row": 0,
+      "x": 0.625,
+      "y": 0.875,
+      "voice": "Duty and dharma",
+      "text": "Ask what the work is for. A thing built only to prove you can build it will feel hollow at the finish. A thing that answers a need someone else carries will pull you through the years when nothing is paying. Choose the second and the question of quitting answers itself.",
+      "jev": { "x": 0.68, "y": 0.9, "hedging": false, "confidence": 0.83 }
+    },
+    {
+      "id": "c-3-0",
+      "col": 3,
+      "row": 0,
+      "x": 0.875,
+      "y": 0.875,
+      "voice": "Indra's net",
+      "text": "No one builds their own thing. You would be standing on languages you did not invent, roads you did not lay, and the patience of people who love you. Leave if you must, but drop the word 'own'. It is the only part of the sentence that is false.",
+      "jev": { "x": 0.95, "y": 0.92, "hedging": false, "confidence": 0.78 }
+    },
+    {
+      "id": "c-0-1",
+      "col": 0,
+      "row": 1,
+      "x": 0.125,
+      "y": 0.625,
+      "voice": "Regret minimisation",
+      "text": "Stand at eighty and look back. The failed attempt is a story. The unmade attempt is a weight. Almost nobody regrets the leap itself; they regret the decade they spent rehearsing it.",
+      "jev": { "x": 0.12, "y": 0.66, "hedging": false, "confidence": 0.74 }
+    },
+    {
+      "id": "c-1-1",
+      "col": 1,
+      "row": 1,
+      "x": 0.375,
+      "y": 0.625,
+      "voice": "Identity risk",
+      "text": "Notice how much of your sense of self is currently rented from the company. Quitting removes the title, the calendar, the people who reply to you. Some of what you call ambition may be a fear of that silence. Find out first.",
+      "jev": { "x": 0.31, "y": 0.58, "hedging": true, "confidence": 0.52 }
+    },
+    {
+      "id": "c-2-1",
+      "col": 2,
+      "row": 1,
+      "x": 0.625,
+      "y": 0.625,
+      "voice": "The people around you",
+      "text": "This is not your decision alone. Whoever shares your rent, your childcare, your quiet Sundays is buying a share in the risk whether or not you sell it to them. Have that conversation before the resignation letter, not after.",
+      "jev": { "x": 0.77, "y": 0.61, "hedging": false, "confidence": 0.88 }
+    },
+    {
+      "id": "c-3-1",
+      "col": 3,
+      "row": 1,
+      "x": 0.875,
+      "y": 0.625,
+      "voice": "Community as ground",
+      "text": "Do not leave alone. Leave toward a circle: a co-founder, a guild, three people who will notice if you disappear for a month. Solo founders do not usually fail at the product. They fail at the eighteenth quiet Tuesday.",
+      "jev": { "x": 0.93, "y": 0.55, "hedging": false, "confidence": 0.8 }
+    },
+    {
+      "id": "c-0-2",
+      "col": 0,
+      "row": 2,
+      "x": 0.125,
+      "y": 0.375,
+      "voice": "Optionality",
+      "text": "Do not quit. Shrink instead. Four days a week, or a contract, or a sabbatical you have to ask awkwardly for. The all-or-nothing framing is a story founders tell afterwards; it is rarely how it happened.",
+      "jev": { "x": 0.18, "y": 0.33, "hedging": true, "confidence": 0.61 }
+    },
+    {
+      "id": "c-1-2",
+      "col": 1,
+      "row": 2,
+      "x": 0.375,
+      "y": 0.375,
+      "voice": "Evidence first",
+      "text": "What have ten strangers done with the thing so far? If the answer is nothing, you do not have a company, you have a preference. Get the evidence on nights and weekends; it is cheaper than a year of savings.",
+      "jev": { "x": 0.29, "y": 0.24, "hedging": false, "confidence": 0.9 }
+    },
+    {
+      "id": "c-2-2",
+      "col": 2,
+      "row": 2,
+      "x": 0.625,
+      "y": 0.375,
+      "voice": "Market reality",
+      "text": "Your idea is being built right now by four teams you have not heard of. That is not a reason to stop; it is a reason to be honest that speed and distribution, not the idea, are what you are actually wagering on.",
+      "jev": { "x": 0.7, "y": 0.29, "hedging": false, "confidence": 0.72 }
+    },
+    {
+      "id": "c-3-2",
+      "col": 3,
+      "row": 2,
+      "x": 0.875,
+      "y": 0.375,
+      "voice": "Who else it costs",
+      "text": "Every founder who quits on a thin runway quietly borrows from someone: a partner working overtime, parents dipping into retirement, a co-founder taking less. Name your lenders out loud. If you cannot, you are not funded, you are hiding.",
+      "jev": { "x": 0.89, "y": 0.31, "hedging": false, "confidence": 0.85 }
+    },
+    {
+      "id": "c-0-3",
+      "col": 0,
+      "row": 3,
+      "x": 0.125,
+      "y": 0.125,
+      "voice": "The runway",
+      "text": "Count the months. Fixed costs times eighteen, in cash, not in equity and not in optimism. If the number is there, quit on Monday. If it is not, you are not choosing courage over fear, you are choosing a deadline you cannot meet.",
+      "jev": { "x": 0.07, "y": 0.06, "hedging": false, "confidence": 0.95 }
+    },
+    {
+      "id": "c-1-3",
+      "col": 1,
+      "row": 3,
+      "x": 0.375,
+      "y": 0.125,
+      "voice": "Compensation math",
+      "text": "You are giving up salary plus unvested equity plus compounding, and buying a lottery ticket with a real but small payoff. Founders beat that expected value mostly when they are unusually cheap to keep alive. Are you?",
+      "jev": { "x": 0.36, "y": 0.11, "hedging": false, "confidence": 0.87 }
+    },
+    {
+      "id": "c-2-3",
+      "col": 2,
+      "row": 3,
+      "x": 0.625,
+      "y": 0.125,
+      "voice": "Labour, plainly",
+      "text": "Most 'build your own thing' is the same work with the safety removed and the boss internalised. You will still answer to customers, investors, and rent. Decide whether you want autonomy or just a different set of masters.",
+      "jev": { "x": 0.66, "y": 0.18, "hedging": true, "confidence": 0.58 }
+    },
+    {
+      "id": "c-3-3",
+      "col": 3,
+      "row": 3,
+      "x": 0.875,
+      "y": 0.125,
+      "voice": "Household economics",
+      "text": "Run it as a household balance sheet, not a personal one. Health insurance, dependents, the mortgage rate you are locked into, the second income that has to absorb the shock. If that sheet holds for two years, go. If it does not, the answer is a date, not a no.",
+      "jev": { "x": 0.94, "y": 0.09, "hedging": false, "confidence": 0.92 }
+    }
+  ]
+}
