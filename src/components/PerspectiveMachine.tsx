@@ -49,6 +49,8 @@ export default function PerspectiveMachine() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // Lets the user call off the loop mid-nudge and keep what is on screen.
+  const running = useRef<AbortController | null>(null);
 
   useEffect(() => {
     feedRef.current?.scrollTo({
@@ -59,6 +61,8 @@ export default function PerspectiveMachine() {
 
   const run = useCallback(
     async (body: object, nextQuestion: string) => {
+      const controller = new AbortController();
+      running.current = controller;
       setBusy(true);
       setNote(null);
       try {
@@ -66,6 +70,7 @@ export default function PerspectiveMachine() {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),
+          signal: controller.signal,
         });
         if (!response.ok) throw new Error(await response.text());
 
@@ -97,13 +102,19 @@ export default function PerspectiveMachine() {
           if (event.type === "error") setNote(event.error ?? "Something broke");
         }
       } catch (error) {
-        setNote(error instanceof Error ? error.message : "Something broke");
+        if (controller.signal.aborted) setNote("Stopped");
+        else setNote(error instanceof Error ? error.message : "Something broke");
       } finally {
+        running.current = null;
         setBusy(false);
       }
     },
     [],
   );
+
+  const stop = useCallback(() => {
+    running.current?.abort();
+  }, []);
 
   const ask = useCallback(() => {
     const asked = draft.trim();
@@ -199,7 +210,8 @@ export default function PerspectiveMachine() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            ask();
+            if (busy) stop();
+            else ask();
           }}
           className="border-t border-[var(--line)] px-6 py-4"
         >
@@ -220,10 +232,10 @@ export default function PerspectiveMachine() {
             />
             <button
               type="submit"
-              disabled={busy || !draft.trim()}
+              disabled={!busy && !draft.trim()}
               className="rounded-lg bg-[var(--foreground)] px-3 py-1.5 text-[12px] font-medium text-[var(--background)] transition-opacity disabled:opacity-30"
             >
-              {busy ? "Working" : "Ask"}
+              {busy ? "Stop" : "Ask"}
             </button>
           </div>
           {answer && (

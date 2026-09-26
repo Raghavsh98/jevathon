@@ -34,8 +34,13 @@ export async function POST(request: Request) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (event: object) =>
-        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      // Writing to a stream the client already walked away from throws; that
+      // is a stop, not a failure.
+      const send = (event: object) => {
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        } catch {}
+      };
 
       try {
         assertKeys();
@@ -55,6 +60,8 @@ export async function POST(request: Request) {
           let best = { answer, at, gap: distance(at, target) };
 
           for (let attempt = 1; attempt <= MAX_NUDGES; attempt += 1) {
+            // The user pressed stop: keep whatever they already have.
+            if (request.signal.aborted) break;
             send({ type: "nudging", attempt });
             const rewritten = await nudge({
               question,
@@ -78,7 +85,7 @@ export async function POST(request: Request) {
 
             // Keep whichever attempt got closest; a nudge can overshoot.
             if (gap < best.gap) best = { answer: rewritten, at: landed, gap };
-            if (hit) break;
+            if (hit || request.signal.aborted) break;
           }
 
           send({
