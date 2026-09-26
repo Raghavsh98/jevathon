@@ -43,16 +43,6 @@ OpenAI, Anthropic, Gemini, and Groq are supported; override with
 `LLM_PROVIDER` / `LLM_MODEL`. Both keys stay on the server; the loop runs in
 `POST /api/steer` (`src/lib/pipeline.ts`) and streams each attempt back.
 
-## The seed answer
-
-`src/data/responses.json` holds a set of answers already scored by Jev. One of
-them is on screen at load, so the plane is never empty and the demo opens with
-no network call. Regenerate it with:
-
-```bash
-LLM_API_KEY=... JEV_API_KEY=... npm run precompute
-JEV_API_KEY=... npm run precompute -- --score-only   # keep texts, re-score
-```
-
-`jev-latest` moves between versions, so the script logs the `model` Jev
-returns. The committed data was scored by `jev-1.13.0`.
+Nothing is precomputed: the chat starts empty and the plane fills in once you
+ask. `jev-latest` moves between versions, so the header shows the version Jev
+reports for the answer on screen.

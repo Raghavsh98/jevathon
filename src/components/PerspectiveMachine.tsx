@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import Plane from "@/components/Plane";
-import { AXES, RADIUS, clamp01, seed, type JevScore } from "@/lib/perspectives";
+import { AXES, RADIUS, clamp01, type JevScore } from "@/lib/perspectives";
 
 export type Answer = { voice: string; text: string };
 export type Point = { x: number; y: number };
@@ -41,14 +41,11 @@ async function* readEvents(response: Response) {
 export default function PerspectiveMachine() {
   const feedRef = useRef<HTMLDivElement>(null);
 
-  const [question, setQuestion] = useState(seed.question);
-  const [answer, setAnswer] = useState<Answer>(seed.answer);
-  const [jev, setJev] = useState<JevScore>(seed.jev);
-  const [puck, setPuck] = useState<Point>({ x: seed.jev.x, y: seed.jev.y });
-  const [turns, setTurns] = useState<Turn[]>([
-    { kind: "question", text: seed.question },
-    { kind: "answer", answer: seed.answer, jev: seed.jev },
-  ]);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState<Answer | null>(null);
+  const [jev, setJev] = useState<JevScore | null>(null);
+  const [puck, setPuck] = useState<Point | null>(null);
+  const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -118,7 +115,7 @@ export default function PerspectiveMachine() {
 
   const steer = useCallback(
     (target: Point) => {
-      if (busy) return;
+      if (busy || !answer || !jev) return;
       void run(
         {
           question,
@@ -140,9 +137,11 @@ export default function PerspectiveMachine() {
             <h1 className="text-[13px] font-medium tracking-tight">
               Perspective Machine
             </h1>
-            <span className="font-mono text-[11px] text-[var(--faint)]">
-              {seed.model}
-            </span>
+            {jev?.model && (
+              <span className="font-mono text-[11px] text-[var(--faint)]">
+                {jev.model}
+              </span>
+            )}
           </div>
           <ThemeToggle />
         </header>
@@ -151,6 +150,12 @@ export default function PerspectiveMachine() {
           ref={feedRef}
           className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6"
         >
+          {turns.length === 0 && !note && (
+            <p className="m-auto max-w-[32ch] text-center text-[14px] leading-relaxed text-[var(--faint)]">
+              Ask anything. Jev will place the answer on the plane.
+            </p>
+          )}
+
           {turns.map((turn, index) =>
             turn.kind === "question" ? (
               <div key={index} className="flex justify-end">
@@ -221,9 +226,11 @@ export default function PerspectiveMachine() {
               {busy ? "Working" : "Ask"}
             </button>
           </div>
-          <p className="mt-2 font-mono text-[11px] text-[var(--faint)]">
-            Drag the puck to move the answer. Jev decides when it has arrived.
-          </p>
+          {answer && (
+            <p className="mt-2 font-mono text-[11px] text-[var(--faint)]">
+              Drag the puck to move the answer. Jev decides when it has arrived.
+            </p>
+          )}
         </form>
       </section>
 
@@ -250,7 +257,7 @@ export default function PerspectiveMachine() {
             <span className="uppercase tracking-[0.14em]">&nbsp;</span>
             <span className="uppercase tracking-[0.14em]">{AXES.y.min}</span>
             <span>
-              puck {puck.x.toFixed(2)}, {puck.y.toFixed(2)}
+              {puck ? `puck ${puck.x.toFixed(2)}, ${puck.y.toFixed(2)}` : ""}
             </span>
           </div>
         </div>

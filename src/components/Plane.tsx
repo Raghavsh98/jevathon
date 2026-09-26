@@ -6,10 +6,10 @@ import { clamp01, type JevScore } from "@/lib/perspectives";
 type Point = { x: number; y: number };
 
 type Props = {
-  /** Where the user wants the answer to stand. */
-  puck: Point;
+  /** Where the user wants the answer to stand. Null until there is an answer. */
+  puck: Point | null;
   /** Where Jev says the current answer actually stands. */
-  jev: JevScore;
+  jev: JevScore | null;
   radius: number;
   busy: boolean;
   onMove: (point: Point) => void;
@@ -32,7 +32,7 @@ export default function Plane({
   const [dragging, setDragging] = useState(false);
   // The last point the pointer produced; onRelease needs it without waiting
   // for a re-render.
-  const latest = useRef(puck);
+  const latest = useRef<Point>({ x: 0.5, y: 0.5 });
 
   const pointAt = useCallback((clientX: number, clientY: number) => {
     const rect = ref.current?.getBoundingClientRect();
@@ -63,14 +63,15 @@ export default function Plane({
     };
   }, [dragging, onMove, onRelease, pointAt]);
 
-  const gap = Math.hypot(puck.x - jev.x, puck.y - jev.y);
+  const live = puck !== null && jev !== null;
+  const gap = live ? Math.hypot(puck.x - jev.x, puck.y - jev.y) : 0;
   const hit = gap <= radius;
 
   return (
     <div
       ref={ref}
       onPointerDown={(event) => {
-        if (busy) return;
+        if (busy || !live) return;
         event.preventDefault();
         const point = pointAt(event.clientX, event.clientY);
         if (!point) return;
@@ -80,7 +81,13 @@ export default function Plane({
       }}
       className="relative aspect-square w-full touch-none select-none rounded-lg border border-[var(--line-strong)]"
       style={{
-        cursor: busy ? "progress" : dragging ? "grabbing" : "grab",
+        cursor: !live
+          ? "default"
+          : busy
+            ? "progress"
+            : dragging
+              ? "grabbing"
+              : "grab",
         opacity: busy ? 0.7 : 1,
         transition: "opacity 200ms ease",
       }}
@@ -92,21 +99,24 @@ export default function Plane({
       </div>
 
       {/* the gap Jev still has to close */}
-      <svg className="pointer-events-none absolute inset-0 h-full w-full">
-        <line
-          x1={left(jev.x)}
-          y1={top(jev.y)}
-          x2={left(puck.x)}
-          y2={top(puck.y)}
-          stroke="var(--line-strong)"
-          strokeWidth="1"
-          strokeDasharray="3 3"
-          opacity={hit ? 0 : 1}
-          style={{ transition: "opacity 300ms ease" }}
-        />
-      </svg>
+      {jev && puck && (
+        <svg className="pointer-events-none absolute inset-0 h-full w-full">
+          <line
+            x1={left(jev.x)}
+            y1={top(jev.y)}
+            x2={left(puck.x)}
+            y2={top(puck.y)}
+            stroke="var(--line-strong)"
+            strokeWidth="1"
+            strokeDasharray="3 3"
+            opacity={hit ? 0 : 1}
+            style={{ transition: "opacity 300ms ease" }}
+          />
+        </svg>
+      )}
 
       {/* where Jev placed the answer */}
+      {jev && (
       <div
         className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
         style={{
@@ -128,8 +138,10 @@ export default function Plane({
           </span>
         )}
       </div>
+      )}
 
       {/* where the user wants it */}
+      {puck && (
       <div
         className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border"
         style={{
@@ -146,6 +158,7 @@ export default function Plane({
       >
         <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--foreground)]" />
       </div>
+      )}
     </div>
   );
 }
