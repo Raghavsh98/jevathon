@@ -326,33 +326,30 @@ export default function PerspectiveMachine() {
           ))}
         </div>
 
-        <div className="w-full max-w-[540px]">
-          <div className="mb-3 flex items-baseline justify-between font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
-            <span>{shown?.x.min ?? ""}</span>
-            <span>{shown?.y.max ?? ""}</span>
-            <span>{shown?.x.max ?? ""}</span>
+        <div className="w-full max-w-[540px] font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
+          <p className="mb-3 text-center">{shown?.y.max ?? ""}</p>
+
+          <div className="flex items-center gap-3">
+            <span className="w-[10ch] text-right">{shown?.x.min ?? ""}</span>
+            <div className="min-w-0 flex-1">
+              <Plane
+                puck={puck}
+                jev={jev}
+                radius={RADIUS}
+                busy={busy}
+                onMove={(point) =>
+                  setPuck({ x: clamp01(point.x), y: clamp01(point.y) })
+                }
+                onRelease={steer}
+              />
+            </div>
+            <span className="w-[10ch]">{shown?.x.max ?? ""}</span>
           </div>
 
-          <Plane
-            puck={puck}
-            jev={jev}
-            radius={RADIUS}
-            busy={busy}
-            onMove={(point) =>
-              setPuck({ x: clamp01(point.x), y: clamp01(point.y) })
-            }
-            onRelease={steer}
-          />
-
-          <div className="mt-3 flex items-baseline justify-between font-mono text-[11px] text-[var(--faint)]">
-            <span className="uppercase tracking-[0.14em]">&nbsp;</span>
-            <span className="uppercase tracking-[0.14em]">
-              {shown?.y.min ?? ""}
-            </span>
-            <span>
-              {puck ? `puck ${puck.x.toFixed(2)}, ${puck.y.toFixed(2)}` : ""}
-            </span>
-          </div>
+          <p className="mt-3 text-center">{shown?.y.min ?? ""}</p>
+          <p className="mt-2 text-center normal-case tracking-normal">
+            {puck ? `puck ${puck.x.toFixed(2)}, ${puck.y.toFixed(2)}` : ""}
+          </p>
         </div>
       </section>
     </main>
