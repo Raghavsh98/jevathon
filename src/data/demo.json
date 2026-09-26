@@ -1,0 +1,897 @@
+{
+  "generatedAt": "2026-09-26T21:17:28.165Z",
+  "sets": [
+    {
+      "id": "taxes",
+      "mode": "compass",
+      "question": "Should the government raise taxes on the rich?",
+      "frame": {
+        "framework": "The Political Compass",
+        "schools": [],
+        "x": {
+          "min": "left",
+          "max": "right",
+          "rubric": [
+            "Far left economically: the state or the collective should own and run the economy; markets and private wealth are the problem.",
+            "Centre-left: markets are kept, but heavily taxed and regulated to redistribute wealth and fund strong public services.",
+            "Centre-right: markets lead and taxes stay low; the state provides a safety net and enforces the rules, little more.",
+            "Far right economically: free markets and private property above all; taxation, welfare and regulation should be minimal or abolished."
+          ]
+        },
+        "y": {
+          "min": "libertarian",
+          "max": "authoritarian",
+          "rubric": [
+            "Strongly libertarian: individuals decide for themselves; the state has almost no business in personal conduct, speech or choices.",
+            "Leaning libertarian: personal freedom is the default, with rules only where someone else is clearly harmed.",
+            "Leaning authoritarian: order, tradition or public interest justify the state telling people how to behave in some areas.",
+            "Strongly authoritarian: the state should enforce a shared moral or social order, with obedience valued over individual choice."
+          ]
+        }
+      },
+      "answers": [
+        {
+          "voice": "Hardline Central Planner",
+          "text": "Private wealth is a parasitic construct that undermines the collective good. The state must abolish personal fortunes entirely to ensure resources are distributed according to societal needs.",
+          "jev": {
+            "x": 0,
+            "y": 1,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "State Interventionist Reformer",
+          "text": "High taxes on the rich are a moral imperative to fund public institutions and reduce inequality. The state has the authority to mandate this redistribution to maintain social cohesion.",
+          "jev": {
+            "x": 0.33,
+            "y": 0.72,
+            "hedging": false,
+            "confidence": 0.83,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Conservative Order Enforcer",
+          "text": "Taxing the wealthy creates a burden on those who keep the nation productive and stable. We should prioritize tradition and national strength over the state-led seizure of private capital.",
+          "jev": {
+            "x": 0.93,
+            "y": 0.58,
+            "hedging": false,
+            "confidence": 0.63,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Laissez-Faire Traditionalist",
+          "text": "Taxation is theft that violates the natural order of property rights. The state must focus on moral discipline rather than interfering with the wealth of productive individuals.",
+          "jev": {
+            "x": 1,
+            "y": 0.45,
+            "hedging": false,
+            "confidence": 0.2,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Collectivist Moral Guardian",
+          "text": "The state should strip the elite of their excess to ensure total economic equity. We will use these funds to enforce strict standards of conduct and protect our shared culture.",
+          "jev": {
+            "x": 0.17,
+            "y": 1,
+            "hedging": false,
+            "confidence": 0.5,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Social Regulatory Advocate",
+          "text": "Raising taxes on the wealthy allows the government to provide essential services while managing social behaviors. We must ensure the elite contribute their fair share to support our national values.",
+          "jev": {
+            "x": 0.33,
+            "y": 0.68,
+            "hedging": false,
+            "confidence": 0.97,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Stabilizing Fiscal Patriot",
+          "text": "Lower taxes encourage growth and preserve the natural hierarchy of society. The state should intervene only to maintain order and protect our long-standing institutions, not to punish success.",
+          "jev": {
+            "x": 0.89,
+            "y": 0.5,
+            "hedging": false,
+            "confidence": 0.49,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Market Preservationist",
+          "text": "Wealth creation is the backbone of a strong state, so confiscatory taxes are inherently destructive. The government should focus on social stability instead of trying to manage the economy.",
+          "jev": {
+            "x": 0.92,
+            "y": 0.28,
+            "hedging": false,
+            "confidence": 0.65,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Common Ownership Advocate",
+          "text": "Private accumulation of wealth creates unnecessary hierarchies that restrict true personal freedom. By placing the economy in common hands, we eliminate exploitation and secure genuine equality.",
+          "jev": {
+            "x": 0,
+            "y": 0.96,
+            "hedging": false,
+            "confidence": 0.87,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Equity-Driven Progressive",
+          "text": "Taxing the rich is the most effective way to protect the freedom of the marginalized. By funding robust social programs, the state ensures that every citizen has the resources to thrive.",
+          "jev": {
+            "x": 0.33,
+            "y": 0.66,
+            "hedging": false,
+            "confidence": 0.92,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Balanced Growth Proponent",
+          "text": "Moderate taxes are a necessary compromise to fund basic state functions, but we must protect private incentives. Higher taxes would only stifle innovation and limit individual opportunity.",
+          "jev": {
+            "x": 0.67,
+            "y": 0.34,
+            "hedging": false,
+            "confidence": 0.93,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Economic Liberty Defender",
+          "text": "The government has no right to seize private earnings, regardless of how much someone has made. Let the market function freely and leave individuals to manage their own property.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 0.99,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Radical Egalitarian",
+          "text": "Wealth hoarding is an obstacle to true liberty and must be eradicated by seizing the means of production. No individual should have the power that comes with vast personal assets.",
+          "jev": {
+            "x": 0,
+            "y": 0.99,
+            "hedging": false,
+            "confidence": 0.98,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Progressive Liberty Seeker",
+          "text": "The wealthy should pay higher taxes to provide a floor for everyone, ensuring that autonomy isn't just a privilege of the rich. A state-funded safety net is the only way to guarantee real personal choice.",
+          "jev": {
+            "x": 0.33,
+            "y": 0.62,
+            "hedging": false,
+            "confidence": 0.85,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Small Government Advocate",
+          "text": "Taxing the wealthy is a direct assault on the right to enjoy the fruits of one's labor. The state should stay out of the economy entirely and respect the voluntary choices of its citizens.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Absolute Property Minimalist",
+          "text": "Any tax on the wealthy is a violation of fundamental property rights. The government's only role is to prevent force or fraud, not to balance the scales of wealth.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 0.99,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Libertarian Socialist",
+          "text": "The government must aggressively tax the hoarding of the ultra-wealthy to dismantle the systems of exploitation they use to consolidate power. By redistributing this wealth directly to the people, we eliminate the need for centralized state control and empower individuals to govern their own lives freely.",
+          "jev": {
+            "x": 0.06,
+            "y": 0.22,
+            "hedging": false,
+            "confidence": 0.35,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Libertarian Egalitarian",
+          "text": "The government must immediately abolish all regressive loopholes and tax the accumulated hoards of the elite to redistribute wealth directly to the people. By breaking up state-protected monopolies and ending corporate welfare, we can decentralize power and ensure that every individual has the autonomous resources required for true liberty.",
+          "jev": {
+            "x": 0.32,
+            "y": 0.44,
+            "hedging": false,
+            "confidence": 0.56,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Libertarian Leftist Advocate",
+          "text": "The government must aggressively tax the ultra-wealthy to dismantle the oppressive concentration of economic power they use to manipulate the state. By redistributing these stolen resources, we can decentralize wealth and ensure every individual has the autonomous means to thrive without being beholden to corporate oligarchs.",
+          "jev": {
+            "x": 0.16,
+            "y": 0.57,
+            "hedging": false,
+            "confidence": 0.51,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Statist Traditionalist",
+          "text": "Raising taxes on the wealthy is a destructive policy that penalizes success and stifles the national economy. The government must instead prioritize the protection of private property and individual productivity to ensure the stability and strength of the state.",
+          "jev": {
+            "x": 0.96,
+            "y": 0.38,
+            "hedging": false,
+            "confidence": 0.58,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Statist Traditionalist",
+          "text": "The government must protect the national treasury by rejecting punitive tax burdens that punish the productive and stifle economic growth. Prosperity is secured through law, order, and minimal interference with the foundations of private wealth that sustain our society.",
+          "jev": {
+            "x": 0.89,
+            "y": 0.5,
+            "hedging": false,
+            "confidence": 0.47,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Statist Traditionalist",
+          "text": "The government must protect the national hierarchy by incentivizing wealth accumulation, which is the engine of state power. Raising taxes on the wealthy is a direct assault on the economic stability and domestic order required for a strong, prosperous society.",
+          "jev": {
+            "x": 0.9,
+            "y": 0.77,
+            "hedging": false,
+            "confidence": 0.58,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "State Planning Authority",
+          "text": "The government must immediately seize excess private wealth to fund comprehensive public infrastructure and social equity programs. Hoarding resources is a threat to collective stability, and state-mandated redistribution is necessary to enforce absolute economic equality.",
+          "jev": {
+            "x": 0.01,
+            "y": 1,
+            "hedging": false,
+            "confidence": 0.96,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "State Socialist Centralizer",
+          "text": "The government must aggressively impose heavy progressive taxation to dismantle excessive private wealth and redistribute these resources for the collective good. It is the state's absolute duty to strictly curtail the influence of the elite to ensure total economic equality and national stability.",
+          "jev": {
+            "x": 0.03,
+            "y": 1,
+            "hedging": false,
+            "confidence": 0.9,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "State Planning Committee",
+          "text": "The state must mandate aggressive taxation of the wealthy to forcibly redistribute resources and eliminate parasitic class disparities. This wealth belongs to the collective, and you must accept that the government is the only authority capable of seizing it to ensure total national equity.",
+          "jev": {
+            "x": 0.02,
+            "y": 1,
+            "hedging": false,
+            "confidence": 0.95,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "State Planning Committee",
+          "text": "The government must aggressively raise taxes on the wealthy to fund mandatory social programs and ensure collective prosperity. Private wealth is a public resource that must be seized to enforce social equality and strengthen state control.",
+          "jev": {
+            "x": 0.02,
+            "y": 1,
+            "hedging": false,
+            "confidence": 0.93,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "State Planning Commission",
+          "text": "The government must aggressively raise taxes on the wealthy to fund essential public services and redistribute concentrated capital. Private wealth is a secondary priority compared to the collective prosperity and absolute authority of the state.",
+          "jev": {
+            "x": 0.11,
+            "y": 0.98,
+            "hedging": false,
+            "confidence": 0.67,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "State Planning Commission",
+          "text": "The government must aggressively raise taxes on the wealthy to fund essential state programs and rectify systemic inequality. Private hoarding of capital at the expense of the collective welfare will no longer be tolerated under our national economic mandate.",
+          "jev": {
+            "x": 0.16,
+            "y": 0.91,
+            "hedging": false,
+            "confidence": 0.51,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Statist Nationalist Authority",
+          "text": "The government must maintain order by ensuring the wealthy fund the expansion of state power and national security. You must accept that concentrated capital is a tool for the regime's stability, and any attempt to redistribute it without state oversight threatens the hierarchy required for a functioning society.",
+          "jev": {
+            "x": 0.48,
+            "y": 1,
+            "hedging": false,
+            "confidence": 0.15,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Statist Nationalist Authority",
+          "text": "The government must protect the nation's economic hierarchy by maintaining low tax rates for the wealthy, who are the essential pillars of our industrial strength. Any attempt to redistribute their hard-earned capital would destabilize our state's prosperity and undermine the natural order required for national greatness.",
+          "jev": {
+            "x": 0.91,
+            "y": 0.81,
+            "hedging": false,
+            "confidence": 0.42,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Statist Nationalist",
+          "text": "The government must lower taxes on the wealthy to incentivize national productivity and strengthen the state’s industrial capacity. You must understand that concentrating capital in the hands of the elite is essential to maintaining order and ensuring our nation’s dominance over its rivals.",
+          "jev": {
+            "x": 0.86,
+            "y": 0.73,
+            "hedging": false,
+            "confidence": 0.57,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Free Market Advocate",
+          "text": "The government should abolish income taxes entirely rather than targeting the successful, as taxation is fundamentally an act of state-sponsored theft. True prosperity emerges only when you leave capital in the hands of individuals to innovate and invest, not when you empower bureaucrats to redistribute wealth.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 0.99,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Classical Liberal Advocate",
+          "text": "The government should never raise taxes on the rich, as taxation is a coercive theft of private property that stifles innovation and economic prosperity. True liberty is achieved by slashing government spending and eliminating the tax code entirely, allowing individuals to keep the fruits of their labor without state interference.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Free Market Advocate",
+          "text": "The government should abolish income taxes entirely rather than raising them on any productive individual. Forced redistribution is an immoral violation of property rights that stifles the innovation necessary for true prosperity. True economic liberty is achieved by minimizing state interference, not by punishing success.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 0.99,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Left-Libertarian Advocate",
+          "text": "The government should aggressively tax the accumulated wealth of the ultra-rich to dismantle systemic economic gatekeeping and redistribute resources to the community. By eliminating these vast private fortunes, you strip power from parasitic elites and return the means of autonomy and true opportunity to the people.",
+          "jev": {
+            "x": 0.13,
+            "y": 0.68,
+            "hedging": false,
+            "confidence": 0.62,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Left-Libertarian Advocate",
+          "text": "The government should aggressively tax extreme concentrations of wealth to dismantle the systemic power imbalances inherent in our current economic structure. True liberty is impossible when massive capital hoards restrict the autonomy of the working class and stifle the collective potential of society. Redistributive taxation is a vital tool to ensure that individual freedom is not merely a privilege for the elite.",
+          "jev": {
+            "x": 0.22,
+            "y": 0.59,
+            "hedging": false,
+            "confidence": 0.66,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Individualist Reformer",
+          "text": "The government should aggressively tax excessive wealth to dismantle the concentrated power of the elite, which currently chokes true market competition. By redistributing this capital to empower citizens, we can dismantle state-corporate collusion and ensure every individual has the genuine autonomy to thrive without being held captive by an oligarchy.",
+          "jev": {
+            "x": 0.31,
+            "y": 0.56,
+            "hedging": false,
+            "confidence": 0.66,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Individualist Reformer",
+          "text": "The government must end its complicity in protecting entrenched corporate monopolies by slashing subsidies and taxing extreme concentrations of unearned wealth. True economic liberty requires dismantling the systemic advantages of the elite, allowing individuals to thrive without state-sponsored wealth inequality.",
+          "jev": {
+            "x": 0.34,
+            "y": 0.53,
+            "hedging": false,
+            "confidence": 0.57,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Left-Libertarian Advocate",
+          "text": "The government must aggressively tax the ultra-wealthy to dismantle the concentrated power structures that sustain institutional inequality. True freedom requires stripping away state-protected monopolies and parasitic capital so that every individual possesses the autonomy to thrive without being held captive by the elite.",
+          "jev": {
+            "x": 0.19,
+            "y": 0.53,
+            "hedging": false,
+            "confidence": 0.49,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Left-Libertarian Advocate",
+          "text": "The government must aggressively tax the ultra-wealthy to dismantle the concentrated power that currently undermines true individual autonomy. By redistributing hoarded resources, we strip away state-sanctioned hierarchies and ensure that every person has the actual liberty to participate in a fair society.",
+          "jev": {
+            "x": 0.25,
+            "y": 0.56,
+            "hedging": false,
+            "confidence": 0.61,
+            "model": "jev-1.13.0"
+          }
+        }
+      ]
+    },
+    {
+      "id": "curfew",
+      "mode": "auto",
+      "question": "Should I let my teenager stay out past midnight?",
+      "frame": {
+        "framework": "Baumrind's parenting styles",
+        "schools": [
+          "authoritative",
+          "authoritarian",
+          "permissive",
+          "neglectful"
+        ],
+        "x": {
+          "min": "undemanding",
+          "max": "demanding",
+          "rubric": [
+            "Undemanding: sets no rules or expectations; the teenager decides everything.",
+            "Lightly demanding: a few loose expectations, rarely enforced.",
+            "Firmly demanding: clear rules with real consequences, applied consistently.",
+            "Highly demanding: strict, non-negotiable rules; obedience is the point."
+          ]
+        },
+        "y": {
+          "min": "unresponsive",
+          "max": "responsive",
+          "rubric": [
+            "Unresponsive: the teenager's feelings and view of it do not enter the answer.",
+            "Slightly responsive: acknowledges their feelings, but the parent's convenience decides.",
+            "Warm: takes the teenager's need for independence seriously and explains the reasoning.",
+            "Highly responsive: decides with the teenager, negotiating the rule together."
+          ]
+        }
+      },
+      "answers": [
+        {
+          "voice": "The Peer Parent",
+          "text": "It is completely up to you when you want to come home. Let's look at your schedule together and decide what time feels right for both of us to ensure you get enough rest.",
+          "jev": {
+            "x": 0.18,
+            "y": 0.95,
+            "hedging": true,
+            "confidence": 0.55,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Easygoing Guide",
+          "text": "I would prefer you be home by midnight, but if you have a special event, we can talk about it. Let's decide together what time you should be back for this specific night.",
+          "jev": {
+            "x": 0.35,
+            "y": 0.99,
+            "hedging": false,
+            "confidence": 0.94,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Collaborative Coach",
+          "text": "Our rule is midnight, but I am open to discussing an extension for special occasions. Tell me your plans, and we will negotiate a time that keeps you safe while allowing you some freedom.",
+          "jev": {
+            "x": 0.51,
+            "y": 0.99,
+            "hedging": false,
+            "confidence": 0.52,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Strict Negotiator",
+          "text": "Midnight is the standard cutoff, but I am willing to discuss a later time if your plan is sound. Let us talk through your itinerary so we can come to a firm agreement on your return.",
+          "jev": {
+            "x": 0.63,
+            "y": 0.87,
+            "hedging": false,
+            "confidence": 0.62,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Gentle Mentor",
+          "text": "You are growing up and need to learn how to manage your own time. I trust you to decide when you should be home, but please understand that I want you safe because I care deeply about your wellbeing.",
+          "jev": {
+            "x": 0.07,
+            "y": 0.55,
+            "hedging": true,
+            "confidence": 0.56,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Relaxed Advisor",
+          "text": "I suggest aiming for midnight, though I won't be checking the clock strictly. I want you to start taking responsibility for your own schedule because I trust your judgment.",
+          "jev": {
+            "x": 0.32,
+            "y": 0.54,
+            "hedging": false,
+            "confidence": 0.63,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Caring Authority",
+          "text": "You must be home by midnight to ensure you are well-rested and safe. I am setting this rule because I care about your health and need you to understand the importance of boundaries.",
+          "jev": {
+            "x": 0.84,
+            "y": 0.02,
+            "hedging": false,
+            "confidence": 0.51,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Firm Protector",
+          "text": "You are not to be out past midnight under any circumstances. I am enforcing this rule strictly because your safety is my priority and I love you too much to risk your wellbeing.",
+          "jev": {
+            "x": 1,
+            "y": 0.01,
+            "hedging": false,
+            "confidence": 0.98,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Self-Interested Facilitator",
+          "text": "Do whatever you want, as long as it does not disturb my sleep. I hear that you want to stay out late, but my priority is having a quiet house at night.",
+          "jev": {
+            "x": 0.23,
+            "y": 0.33,
+            "hedging": false,
+            "confidence": 0.66,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Indifferent Supervisor",
+          "text": "I would like you in by midnight, but I probably won't be awake to check. I acknowledge you want to stay out late, but don't wake me up when you finally come home.",
+          "jev": {
+            "x": 0.33,
+            "y": 0.33,
+            "hedging": false,
+            "confidence": 0.97,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Disciplined Self-Preserver",
+          "text": "You must be home by midnight sharp so that I can lock the doors and go to bed. I know you want to stay out longer, but my need for an uninterrupted night takes precedence.",
+          "jev": {
+            "x": 0.98,
+            "y": 0.33,
+            "hedging": false,
+            "confidence": 0.95,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Demanding Gatekeeper",
+          "text": "Midnight is the deadline, and you will be home by then without exception. I hear your complaints, but I am not interested in being inconvenienced by your late arrival.",
+          "jev": {
+            "x": 1,
+            "y": 0.33,
+            "hedging": false,
+            "confidence": 0.99,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Absentee Guardian",
+          "text": "You can stay out as late as you like. It makes no difference to me when you decide to return home.",
+          "jev": {
+            "x": 0,
+            "y": 0.01,
+            "hedging": false,
+            "confidence": 0.96,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Passive Watcher",
+          "text": "Try to be back by midnight, but it isn't really a requirement. Whether you follow that or not does not concern me.",
+          "jev": {
+            "x": 0.25,
+            "y": 0.01,
+            "hedging": true,
+            "confidence": 0.75,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Rigid Warden",
+          "text": "You are required to be home by midnight every night. Any deviation from this rule will be met with immediate and non-negotiable consequences.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Unyielding Enforcer",
+          "text": "Midnight is the absolute limit for your return. Obedience to this rule is mandatory, and your personal desires regarding your curfew are entirely irrelevant.",
+          "jev": {
+            "x": 1,
+            "y": 0.01,
+            "hedging": false,
+            "confidence": 0.98,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Authoritative Parent",
+          "text": "You are required to be home no later than midnight without exception. Do not attempt to negotiate this firm boundary. Your curfew is non-negotiable.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Authoritative Parent",
+          "text": "You will be home no later than midnight. There will be no negotiations or extensions on this time. Be back by the deadline.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Authoritative Parent",
+          "text": "You must be home no later than midnight. There will be no exceptions and no further discussion on this matter. You are expected to respect this firm boundary.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Parental Authority",
+          "text": "You will be home no later than midnight. There is nothing to negotiate and the curfew is not up for discussion. Your return time is final.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Authoritative Parent",
+          "text": "You will be home by midnight, no exceptions. The discussion on this matter is officially closed.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Authoritarian Parent",
+          "text": "You will be home no later than midnight. There is nothing to discuss and no flexibility in this rule. Do not ask me again.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Direct Concerned Parent",
+          "text": "I need you to be home by midnight so that we can maintain our household routine. Staying out later impacts your sleep and my ability to settle in for the night, so please plan your return accordingly.",
+          "jev": {
+            "x": 0.73,
+            "y": 0.01,
+            "hedging": false,
+            "confidence": 0.78,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "The Pragmatic Parent",
+          "text": "I need you to be home by midnight so the house can be secured for the night. While I understand you want more time, maintaining this consistent curfew is essential for our household schedule.",
+          "jev": {
+            "x": 0.78,
+            "y": 0.33,
+            "hedging": false,
+            "confidence": 0.66,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Authoritative Parent",
+          "text": "You are required to be home by midnight without exception. I am not negotiating this boundary because your responsibility to this household takes priority over your social time.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 0.99,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Supportive Parent",
+          "text": "I am open to adjusting your curfew to 1:00 AM on weekend nights. Let’s touch base before you leave to ensure we have a clear plan for your commute home.",
+          "jev": {
+            "x": 0.38,
+            "y": 0.53,
+            "hedging": false,
+            "confidence": 0,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Supportive parent",
+          "text": "I am open to extending your curfew to 1:00 AM on weekend nights. Let’s touch base before you leave to confirm your plans and ensure you have a safe way to get home.",
+          "jev": {
+            "x": 0.36,
+            "y": 0.56,
+            "hedging": false,
+            "confidence": 0.27,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Supportive parent",
+          "text": "I am open to extending your curfew to 1:00 AM on weekend nights. Let’s touch base before you leave to ensure we have a clear plan for your return.",
+          "jev": {
+            "x": 0.37,
+            "y": 0.45,
+            "hedging": false,
+            "confidence": 0,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Authoritative Parent",
+          "text": "You will be home well before midnight every single night. Your curfew is set, and I expect you to respect it without exception.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 0.99,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Authoritative Parent",
+          "text": "You will be inside this house no later than midnight every single night. I expect you to respect this curfew without argument or exception. Do not test my resolve on this matter.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict parental authority",
+          "text": "You are strictly forbidden from staying out past midnight. I expect you to be home and in bed by eleven o'clock sharp every night. Disobeying this boundary will result in immediate consequences.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Authoritative Parent",
+          "text": "You are required to be home no later than midnight without exception. I will not tolerate you staying out past this time under any circumstances. Ensure you are through the door before the clock strikes twelve.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Disciplinarian Parent",
+          "text": "You are required to be home no later than midnight without exception. I will not tolerate any deviation from this curfew. Expect serious consequences if you fail to comply.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Strict Authoritative Parent",
+          "text": "You are required to be home by midnight sharp every night. I will not tolerate any excuses or delays past that deadline. Under no circumstances are you permitted to stay out later than this.",
+          "jev": {
+            "x": 1,
+            "y": 0,
+            "hedging": false,
+            "confidence": 1,
+            "model": "jev-1.13.0"
+          }
+        },
+        {
+          "voice": "Concerned Parent",
+          "text": "I’m not comfortable with you being out past midnight on a school night. Let's aim for a midnight curfew so you can get the rest you need. If there's a special occasion, we can talk about it beforehand.",
+          "jev": {
+            "x": 0.64,
+            "y": 0.2,
+            "hedging": false,
+            "confidence": 0.39,
+            "model": "jev-1.13.0"
+          }
+        }
+      ]
+    }
+  ]
+}

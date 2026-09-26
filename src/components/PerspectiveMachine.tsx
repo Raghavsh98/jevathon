@@ -10,14 +10,47 @@ import {
   type Frame,
   type JevScore,
 } from "@/lib/perspectives";
+import { findSet, nearest, opening, type DemoSet } from "@/lib/demo";
 
 export type Answer = { voice: string; text: string };
 export type Point = { x: number; y: number };
 
+type Attempt = {
+  kind: "answer";
+  /** Which run wrote it, so a run's rewrites collapse into one block. */
+  run: number;
+  answer: Answer;
+  jev: JevScore;
+  gap?: number;
+  hit?: boolean;
+};
+
 type Turn =
   | { kind: "question"; text: string }
-  | { kind: "answer"; answer: Answer; jev: JevScore; gap?: number; hit?: boolean }
+  | Attempt
   | { kind: "note"; text: string };
+
+/** Consecutive attempts from one run, so only the last one is shown. */
+type Block =
+  | { kind: "other"; turn: Turn; key: number }
+  | { kind: "attempts"; run: number; attempts: Attempt[]; key: number };
+
+function blocksOf(turns: Turn[]): Block[] {
+  const blocks: Block[] = [];
+  turns.forEach((turn, key) => {
+    const last = blocks[blocks.length - 1];
+    if (turn.kind !== "answer") {
+      blocks.push({ kind: "other", turn, key });
+      return;
+    }
+    if (last?.kind === "attempts" && last.run === turn.run) {
+      last.attempts.push(turn);
+      return;
+    }
+    blocks.push({ kind: "attempts", run: turn.run, attempts: [turn], key });
+  });
+  return blocks;
+}
 
 type Event = {
   type: "answer" | "frame" | "nudging" | "done" | "error";
@@ -29,6 +62,10 @@ type Event = {
   hit?: boolean;
   error?: string;
 };
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const round = (value: number) => Math.round(value * 100) / 100;
 
 async function* readEvents(response: Response) {
   const reader = response.body?.getReader();
@@ -43,6 +80,29 @@ async function* readEvents(response: Response) {
     buffer = lines.pop() ?? "";
     for (const line of lines) if (line.trim()) yield JSON.parse(line) as Event;
   }
+}
+
+function Attempt({ attempt, muted }: { attempt: Attempt; muted?: boolean }) {
+  const { answer, jev, gap, hit } = attempt;
+  return (
+    <div
+      className={
+        muted
+          ? "border-l border-[var(--line)] pl-4 opacity-60"
+          : undefined
+      }
+    >
+      <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
+        {answer.voice}
+      </p>
+      <p className="max-w-[48ch] text-[15px] leading-[1.75]">{answer.text}</p>
+      <p className="mt-3 font-mono text-[11px] leading-relaxed text-[var(--faint)]">
+        {`jev ${jev.x.toFixed(2)}, ${jev.y.toFixed(2)} · confidence ${Math.round(jev.confidence * 100)}%`}
+        {jev.hedging ? " · hedging" : ""}
+        {gap !== undefined ? (hit ? " · inside the puck" : ` · ${gap} away`) : ""}
+      </p>
+    </div>
+  );
 }
 
 export default function PerspectiveMachine() {
@@ -66,6 +126,13 @@ export default function PerspectiveMachine() {
   );
   // Lets the user call off the loop mid-nudge and keep what is on screen.
   const running = useRef<AbortController | null>(null);
+  // On this branch a prepared question is served from answers Jev already
+  // scored, so a demo never waits on — or is let down by — a live model.
+  const [prepared, setPrepared] = useState<DemoSet | null>(null);
+  // Each ask or drag is a run; its rewrites collapse under the answer it
+  // arrived at, and can be opened to read how it got there.
+  const runs = useRef(0);
+  const [opened, setOpened] = useState<number[]>([]);
 
   useEffect(() => {
     feedRef.current?.scrollTo({
@@ -76,6 +143,7 @@ export default function PerspectiveMachine() {
 
   const run = useCallback(
     async (body: object, nextQuestion: string) => {
+      const id = (runs.current += 1);
       const controller = new AbortController();
       running.current = controller;
       setBusy(true);
@@ -129,7 +197,7 @@ export default function PerspectiveMachine() {
             const { answer: got, jev: scored, gap, hit } = event;
             setTurns((current) => [
               ...current,
-              { kind: "answer", answer: got, jev: scored, gap, hit },
+              { kind: "answer", run: id, answer: got, jev: scored, gap, hit },
             ]);
             setNote(null);
             setStage(
@@ -159,6 +227,64 @@ export default function PerspectiveMachine() {
     running.current?.abort();
   }, []);
 
+  /** Replays the loop over prepared answers, at the pace of the real one. */
+  const replay = useCallback(
+    async (set: DemoSet, target: Point | null, asked: string) => {
+      const id = (runs.current += 1);
+      setBusy(true);
+      setNote(null);
+      try {
+        if (!target) {
+          setStage({ label: "Writing an answer", attempt: 0 });
+          await wait(1200);
+          setFrame(set.frame);
+          setTurns((current) => [
+            ...current,
+            {
+              kind: "note",
+              text: [
+                set.frame.framework ? `Framework: ${set.frame.framework}` : "",
+                `Axes: ${set.frame.x.min} ↔ ${set.frame.x.max} · ${set.frame.y.min} ↔ ${set.frame.y.max}`,
+              ]
+                .filter(Boolean)
+                .join("\n"),
+            },
+          ]);
+          setStage({ label: "Jev is placing the answer", attempt: 0 });
+          await wait(900);
+        } else {
+          setStage({ label: "Rewriting toward the puck", attempt: 1 });
+          await wait(1400);
+        }
+
+        const picked = target ? nearest(set, target) : opening(set);
+        const { voice, text, jev: scored } = picked;
+        const distance = target
+          ? round(Math.hypot(scored.x - target.x, scored.y - target.y))
+          : undefined;
+        setAnswer({ voice, text });
+        setJev(scored);
+        setQuestion(asked);
+        if (!target) setPuck({ x: scored.x, y: scored.y });
+        setTurns((current) => [
+          ...current,
+          {
+            kind: "answer",
+            run: id,
+            answer: { voice, text },
+            jev: scored,
+            gap: distance,
+            hit: distance === undefined ? undefined : distance <= RADIUS,
+          },
+        ]);
+      } finally {
+        setStage(null);
+        setBusy(false);
+      }
+    },
+    [],
+  );
+
   const ask = useCallback(() => {
     const asked = draft.trim();
     if (!asked || busy) return;
@@ -169,15 +295,27 @@ export default function PerspectiveMachine() {
     setFrame(chosen);
     setJev(null);
     setPuck(null);
+
+    const set = findSet(asked, mode);
+    setPrepared(set);
+    if (set) {
+      void replay(set, null, asked);
+      return;
+    }
+
     void run(
       chosen ? { question: asked, frame: chosen } : { question: asked },
       asked,
     );
-  }, [busy, draft, mode, run]);
+  }, [busy, draft, mode, replay, run]);
 
   const steer = useCallback(
     (target: Point) => {
       if (busy || !answer || !jev || !frame) return;
+      if (prepared) {
+        void replay(prepared, target, question);
+        return;
+      }
       void run(
         {
           question,
@@ -189,7 +327,7 @@ export default function PerspectiveMachine() {
         question,
       );
     },
-    [answer, busy, frame, jev, question, run],
+    [answer, busy, frame, jev, prepared, question, replay, run],
   );
 
   // In compass mode the plane is known before anything is asked.
@@ -227,41 +365,60 @@ export default function PerspectiveMachine() {
             </p>
           )}
 
-          {turns.map((turn, index) =>
-            turn.kind === "question" ? (
-              <div key={index} className="flex justify-end">
-                <p className="max-w-[80%] rounded-2xl rounded-br-md bg-[var(--bubble)] px-4 py-2.5 text-[14px] leading-relaxed">
-                  {turn.text}
+          {blocksOf(turns).map((block) => {
+            if (block.kind === "other") {
+              const turn = block.turn;
+              if (turn.kind === "question") {
+                return (
+                  <div key={block.key} className="flex justify-end">
+                    <p className="max-w-[80%] rounded-2xl rounded-br-md bg-[var(--bubble)] px-4 py-2.5 text-[14px] leading-relaxed">
+                      {turn.text}
+                    </p>
+                  </div>
+                );
+              }
+              return (
+                <p
+                  key={block.key}
+                  className="whitespace-pre-line font-mono text-[11px] leading-relaxed text-[var(--faint)]"
+                >
+                  {turn.kind === "note" ? turn.text : ""}
                 </p>
+              );
+            }
+
+            const arrived = block.attempts[block.attempts.length - 1];
+            const earlier = block.attempts.slice(0, -1);
+            const isOpen = opened.includes(block.run);
+            return (
+              <div key={block.key} className="flex flex-col gap-6">
+                {earlier.length > 0 && (
+                  <div className="flex flex-col gap-6">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpened((current) =>
+                          isOpen
+                            ? current.filter((id) => id !== block.run)
+                            : [...current, block.run],
+                        )
+                      }
+                      className="self-start font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)] transition-colors hover:text-[var(--foreground)]"
+                    >
+                      {`${isOpen ? "▾" : "▸"} ${earlier.length} rewrite${
+                        earlier.length === 1 ? "" : "s"
+                      } on the way`}
+                    </button>
+                    {isOpen &&
+                      earlier.map((attempt, index) => (
+                        <Attempt key={index} attempt={attempt} muted />
+                      ))}
+                  </div>
+                )}
+                <Attempt attempt={arrived} />
               </div>
-            ) : turn.kind === "note" ? (
-              <p
-                key={index}
-                className="whitespace-pre-line font-mono text-[11px] leading-relaxed text-[var(--faint)]"
-              >
-                {turn.text}
-              </p>
-            ) : (
-              <div key={index}>
-                <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
-                  {turn.answer.voice}
-                </p>
-                <p className="max-w-[48ch] text-[15px] leading-[1.75]">
-                  {turn.answer.text}
-                </p>
-                <p className="mt-3 font-mono text-[11px] leading-relaxed text-[var(--faint)]">
-                  jev {turn.jev.x.toFixed(2)}, {turn.jev.y.toFixed(2)} ·
-                  confidence {Math.round(turn.jev.confidence * 100)}%
-                  {turn.jev.hedging ? " · hedging" : ""}
-                  {turn.gap !== undefined
-                    ? turn.hit
-                      ? " · inside the puck"
-                      : ` · ${turn.gap} away`
-                    : ""}
-                </p>
-              </div>
-            ),
-          )}
+            );
+          })}
 
           {stage && (
             <div className="animate-pulse">
@@ -345,6 +502,7 @@ export default function PerspectiveMachine() {
                 setFrame(null);
                 setJev(null);
                 setPuck(null);
+                setPrepared(null);
               }}
               className={`rounded-md px-3 py-1.5 text-[12px] transition-colors disabled:opacity-40 ${
                 mode === value
@@ -366,7 +524,6 @@ export default function PerspectiveMachine() {
               <Plane
                 puck={puck}
                 jev={jev}
-                radius={RADIUS}
                 busy={busy}
                 onMove={(point) =>
                   setPuck({ x: clamp01(point.x), y: clamp01(point.y) })
