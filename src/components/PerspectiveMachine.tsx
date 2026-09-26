@@ -101,8 +101,8 @@ export default function PerspectiveMachine() {
   const { axes } = perspectives;
 
   return (
-    <main className="flex h-dvh w-full flex-col items-center justify-center gap-10 px-8 py-10 lg:flex-row lg:gap-20">
-      <section className="flex w-full max-w-[520px] flex-col items-center">
+    <main className="mx-auto flex h-dvh w-full max-w-[1180px] flex-col items-center justify-center gap-10 px-10 py-10 lg:flex-row lg:gap-16">
+      <section className="flex w-full max-w-[620px] shrink-0 flex-col items-center">
         <div className="mb-4 flex w-full items-baseline justify-between text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
           <span>{axes.x.min}</span>
           <span className="text-[var(--accent)]">{axes.y.max}</span>
@@ -135,7 +135,7 @@ export default function PerspectiveMachine() {
                     }}
                   >
                     <span
-                      className="text-[10px] leading-tight tracking-wide text-[var(--muted)] transition-all duration-300"
+                      className="text-[11px] leading-tight tracking-wide text-[var(--muted)] transition-all duration-300"
                       style={confidenceStyle(cell.jev.confidence)}
                     >
                       {cell.voice}
@@ -169,7 +169,7 @@ export default function PerspectiveMachine() {
         </div>
       </section>
 
-      <section className="flex w-full max-w-[460px] flex-col">
+      <section className="flex w-full max-w-[420px] flex-col">
         <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
           {perspectives.question}
         </p>
@@ -182,7 +182,7 @@ export default function PerspectiveMachine() {
             {active.voice}
           </p>
           <p
-            className="mt-4 text-[17px] leading-[1.7] transition-all duration-300"
+            className="mt-4 text-[19px] leading-[1.65] transition-all duration-300"
             style={confidenceStyle(active.jev.confidence)}
           >
             {active.text}
