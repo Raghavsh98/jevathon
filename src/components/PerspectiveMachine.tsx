@@ -26,9 +26,7 @@ type Attempt = {
 };
 
 type Turn =
-  | { kind: "question"; text: string }
-  | Attempt
-  | { kind: "note"; text: string };
+  { kind: "question"; text: string } | Attempt | { kind: "note"; text: string };
 
 /** Consecutive attempts from one run, so only the last one is shown. */
 type Block =
@@ -87,9 +85,7 @@ function Attempt({ attempt, muted }: { attempt: Attempt; muted?: boolean }) {
   return (
     <div
       className={
-        muted
-          ? "border-l border-[var(--line)] pl-4 opacity-60"
-          : undefined
+        muted ? "border-l border-[var(--line)] pl-4 opacity-60" : undefined
       }
     >
       <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
@@ -99,7 +95,11 @@ function Attempt({ attempt, muted }: { attempt: Attempt; muted?: boolean }) {
       <p className="mt-3 font-mono text-[11px] leading-relaxed text-[var(--faint)]">
         {`jev ${jev.x.toFixed(2)}, ${jev.y.toFixed(2)} · confidence ${Math.round(jev.confidence * 100)}%`}
         {jev.hedging ? " · hedging" : ""}
-        {gap !== undefined ? (hit ? " · inside the puck" : ` · ${gap} away`) : ""}
+        {gap !== undefined
+          ? hit
+            ? " · inside the puck"
+            : ` · ${gap} away`
+          : ""}
       </p>
     </div>
   );
@@ -141,87 +141,93 @@ export default function PerspectiveMachine() {
     });
   }, [turns, note, stage]);
 
-  const run = useCallback(
-    async (body: object, nextQuestion: string) => {
-      const id = (runs.current += 1);
-      const controller = new AbortController();
-      running.current = controller;
-      setBusy(true);
-      setNote(null);
-      setStage({ label: "Writing an answer", attempt: 0 });
-      try {
-        const response = await fetch("/api/steer", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error(await response.text());
+  const run = useCallback(async (body: object, nextQuestion: string) => {
+    const id = (runs.current += 1);
+    const controller = new AbortController();
+    running.current = controller;
+    setBusy(true);
+    setNote(null);
+    setStage({ label: "Writing an answer", attempt: 0 });
+    // The server keeps whichever attempt got closest, since a nudge can
+    // overshoot; the screen follows the same one.
+    let closest = Infinity;
+    try {
+      const response = await fetch("/api/steer", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(await response.text());
 
-        for await (const event of readEvents(response)) {
-          if (event.type === "frame" && event.frame) {
-            const { schools, framework, x, y } = event.frame;
-            setFrame(event.frame);
-            setTurns((current) => [
-              ...current,
-              {
-                kind: "note",
-                text: [
-                  framework
-                    ? `Framework: ${framework}`
-                    : schools.length
-                      ? `Schools of thought: ${schools.join(", ")}`
-                      : "",
-                  `Axes: ${x.min} ↔ ${x.max} · ${y.min} ↔ ${y.max}`,
-                ]
-                  .filter(Boolean)
-                  .join("\n"),
-              },
-            ]);
-            setStage({ label: "Jev is placing the answer", attempt: 0 });
-          }
-          if (event.type === "nudging") {
-            setStage({
-              label:
-                event.attempt === 1
-                  ? "Rewriting toward the puck"
-                  : "Not there yet, rewriting again",
-              attempt: event.attempt ?? 0,
-            });
-          }
-          if (event.type === "answer" && event.answer && event.jev) {
+      for await (const event of readEvents(response)) {
+        if (event.type === "frame" && event.frame) {
+          const { schools, framework, x, y } = event.frame;
+          setFrame(event.frame);
+          setTurns((current) => [
+            ...current,
+            {
+              kind: "note",
+              text: [
+                framework
+                  ? `Framework: ${framework}`
+                  : schools.length
+                    ? `Schools of thought: ${schools.join(", ")}`
+                    : "",
+                `Axes: ${x.min} ↔ ${x.max} · ${y.min} ↔ ${y.max}`,
+              ]
+                .filter(Boolean)
+                .join("\n"),
+            },
+          ]);
+          setStage({ label: "Jev is placing the answer", attempt: 0 });
+        }
+        if (event.type === "nudging") {
+          setStage({
+            label:
+              event.attempt === 1
+                ? "Rewriting toward the puck"
+                : "Not there yet, rewriting again",
+            attempt: event.attempt ?? 0,
+          });
+        }
+        if (event.type === "answer" && event.answer && event.jev) {
+          const reached = event.gap ?? Infinity;
+          if (event.attempt === 0 || reached < closest) {
+            closest = event.attempt === 0 ? Infinity : reached;
             setAnswer(event.answer);
             setJev(event.jev);
-            setQuestion(nextQuestion);
-            if (event.attempt === 0) setPuck({ x: event.jev.x, y: event.jev.y });
-            const { answer: got, jev: scored, gap, hit } = event;
-            setTurns((current) => [
-              ...current,
-              { kind: "answer", run: id, answer: got, jev: scored, gap, hit },
-            ]);
-            setNote(null);
-            setStage(
-              hit === false ? { label: "Jev is re-reading it", attempt: 0 } : null,
-            );
           }
-          if (event.type === "done" && event.hit === false) {
-            setNote(
-              `Closest it got was ${event.gap} away — the puck is asking for a position the model will not hold.`,
-            );
-          }
-          if (event.type === "error") setNote(event.error ?? "Something broke");
+          setQuestion(nextQuestion);
+          if (event.attempt === 0) setPuck({ x: event.jev.x, y: event.jev.y });
+          const { answer: got, jev: scored, gap, hit } = event;
+          setTurns((current) => [
+            ...current,
+            { kind: "answer", run: id, answer: got, jev: scored, gap, hit },
+          ]);
+          setNote(null);
+          setStage(
+            hit === false
+              ? { label: "Jev is re-reading it", attempt: 0 }
+              : null,
+          );
         }
-      } catch (error) {
-        if (controller.signal.aborted) setNote("Stopped");
-        else setNote(error instanceof Error ? error.message : "Something broke");
-      } finally {
-        running.current = null;
-        setStage(null);
-        setBusy(false);
+        if (event.type === "done" && event.hit === false) {
+          setNote(
+            `Closest it got was ${event.gap} away — the puck is asking for a position the model will not hold.`,
+          );
+        }
+        if (event.type === "error") setNote(event.error ?? "Something broke");
       }
-    },
-    [],
-  );
+    } catch (error) {
+      if (controller.signal.aborted) setNote("Stopped");
+      else setNote(error instanceof Error ? error.message : "Something broke");
+    } finally {
+      running.current = null;
+      setStage(null);
+      setBusy(false);
+    }
+  }, []);
 
   const stop = useCallback(() => {
     running.current?.abort();
@@ -333,8 +339,7 @@ export default function PerspectiveMachine() {
   // In compass mode the plane is known before anything is asked.
   const shown = frame ?? (mode === "compass" ? POLITICAL_COMPASS : null);
   // How far the answer on screen still is from where the puck sits.
-  const gap =
-    jev && puck ? Math.hypot(jev.x - puck.x, jev.y - puck.y) : null;
+  const gap = jev && puck ? Math.hypot(jev.x - puck.x, jev.y - puck.y) : null;
 
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden lg:flex-row">
@@ -387,8 +392,14 @@ export default function PerspectiveMachine() {
               );
             }
 
-            const arrived = block.attempts[block.attempts.length - 1];
-            const earlier = block.attempts.slice(0, -1);
+            // A nudge can overshoot, so the run's answer is its closest
+            // attempt, not its last one.
+            const arrived = block.attempts.reduce((best, attempt) =>
+              (attempt.gap ?? Infinity) < (best.gap ?? Infinity)
+                ? attempt
+                : best,
+            );
+            const earlier = block.attempts.filter((a) => a !== arrived);
             const isOpen = opened.includes(block.run);
             return (
               <div key={block.key} className="flex flex-col gap-6">
