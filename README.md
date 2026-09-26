@@ -1,28 +1,34 @@
 # Perspective Machine
 
-One question. A 4×4 grid. Drag the puck and a different worldview answers.
+Ask one question. Jev says where the answer stands. Drag the puck somewhere
+else on the plane and the model is nudged until it genuinely stands there.
 
-Chat on the left, grid on the right. Monochrome, light and dark.
-
-Moving the puck does not rephrase the answer — it changes who is speaking. The
-axes are hardcoded:
+The plane has two axes:
 
 - **x:** individual ←→ collective
 - **y:** material ←→ spiritual
 
-## How it works
+Chat on the left, plane on the right. Monochrome, light and dark.
 
-Nothing is generated while you drag.
+## The loop
 
-1. An LLM writes 16 answers, one per cell, each prompted with its axis position.
-2. Jev scores each answer: where it actually sits on both axes, and whether it
-   is hedging. Jev returns typed decisions with calibrated probabilities — it
-   does not write text.
-3. The 16 scored answers are committed to `src/data/responses.json`.
-4. Dragging is a lookup and a crossfade. No network, no latency, cannot fail.
+1. The model writes one answer.
+2. Jev scores where that answer actually sits on both axes, plus a hedging
+   check. Jev returns typed decisions with calibrated probabilities — it never
+   writes text.
+3. You drag the puck. The gap between Jev's score and the puck is handed back
+   to the model as a nudge — "clearly more collective, slightly more material" —
+   and it rewrites.
+4. Jev re-scores. Still outside the puck's radius, it gets nudged again, up to
+   six times. Whichever attempt lands closest is kept.
 
-Jev's confidence is rendered as a visual material: low confidence cells are
-faded and blurred, high confidence cells are sharp. Hedging answers carry a dot.
+Every attempt shows up in the chat, so the loop is the interface: you watch the
+model overshoot, get corrected, and settle. Jev decides when it has arrived —
+not the model, and not a prompt claiming it moved.
+
+The dot on the plane is Jev's score for the current answer, faded and blurred
+by how confident Jev is. The ring is your puck, and the dashed line is the gap
+still to close.
 
 ## Run it
 
@@ -32,31 +38,21 @@ cp .env.example .env.local   # add your keys
 npm run dev
 ```
 
-Arrow keys move the puck one cell at a time.
+`JEV_API_KEY` is required. The LLM provider is detected from the key shape —
+OpenAI, Anthropic, Gemini, and Groq are supported; override with
+`LLM_PROVIDER` / `LLM_MODEL`. Both keys stay on the server; the loop runs in
+`POST /api/steer` (`src/lib/pipeline.ts`) and streams each attempt back.
 
-## Asking your own question
+## The seed answer
 
-The committed set answers the demo question with zero latency. Typing a new
-question in the chat runs the same two steps live through `POST /api/ask`
-(`src/lib/pipeline.ts`) and takes about half a minute — the keys stay on the
-server. If that call fails, the grid keeps whatever it was showing.
-
-## Regenerate the answers
-
-Optional — the committed JSON is what the demo runs on.
+`src/data/responses.json` holds a set of answers already scored by Jev. One of
+them is on screen at load, so the plane is never empty and the demo opens with
+no network call. Regenerate it with:
 
 ```bash
-# rewrite all 16 answers, then score them
 LLM_API_KEY=... JEV_API_KEY=... npm run precompute
-
-# keep the answers, just re-score them with Jev
-JEV_API_KEY=... npm run precompute -- --score-only
+JEV_API_KEY=... npm run precompute -- --score-only   # keep texts, re-score
 ```
 
-Same two steps as `/api/ask`, written to disk instead of served.
-The provider is detected from the key shape — OpenAI, Anthropic, Gemini, and
-Groq are supported; override with `LLM_PROVIDER` / `LLM_MODEL`. Set
-`QUESTION="..."` for a different question.
-
-The script logs the `model` field Jev returns, since `jev-latest` moves between
-versions. The committed data was scored by `jev-1.13.0`.
+`jev-latest` moves between versions, so the script logs the `model` Jev
+returns. The committed data was scored by `jev-1.13.0`.

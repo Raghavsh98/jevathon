@@ -1,206 +1,192 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
-import {
-  GRID,
-  clamp01,
-  nearestCell,
-  precomputed,
-  type Cell,
-  type Perspectives,
-} from "@/lib/perspectives";
+import Plane from "@/components/Plane";
+import { AXES, RADIUS, clamp01, seed, type JevScore } from "@/lib/perspectives";
 
-const START = { x: 0.5, y: 0.5 };
+export type Answer = { voice: string; text: string };
+export type Point = { x: number; y: number };
 
-// Jev's confidences sit in a narrow band, so stretch them across that band's
-// own range - otherwise every cell renders equally washed out and the
-// difference between a sure answer and an unsure one stops being visible.
-function confidenceScale(cells: Cell[]) {
-  const values = cells.map((cell) => cell.jev.confidence);
-  const low = Math.min(...values);
-  const high = Math.max(...values);
-  return (confidence: number) =>
-    high === low ? 1 : (confidence - low) / (high - low);
+type Turn =
+  | { kind: "question"; text: string }
+  | { kind: "answer"; answer: Answer; jev: JevScore; gap?: number; hit?: boolean }
+  | { kind: "note"; text: string };
+
+type Event = {
+  type: "answer" | "nudging" | "done" | "error";
+  attempt?: number;
+  answer?: Answer;
+  jev?: JevScore;
+  gap?: number;
+  hit?: boolean;
+  error?: string;
+};
+
+async function* readEvents(response: Response) {
+  const reader = response.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) if (line.trim()) yield JSON.parse(line) as Event;
+  }
 }
 
 export default function PerspectiveMachine() {
-  const gridRef = useRef<HTMLDivElement>(null);
-  const fadeTimer = useRef<number | null>(null);
-  const targetId = useRef<string | null>(
-    nearestCell(precomputed.cells, START.x, START.y).id,
-  );
+  const feedRef = useRef<HTMLDivElement>(null);
 
-  const [set, setSet] = useState<Perspectives>(precomputed);
-  const [puck, setPuck] = useState(START);
-  const [dragging, setDragging] = useState(false);
-  const [active, setActive] = useState<Cell>(() =>
-    nearestCell(precomputed.cells, START.x, START.y),
-  );
-  const [visible, setVisible] = useState(true);
+  const [question, setQuestion] = useState(seed.question);
+  const [answer, setAnswer] = useState<Answer>(seed.answer);
+  const [jev, setJev] = useState<JevScore>(seed.jev);
+  const [puck, setPuck] = useState<Point>({ x: seed.jev.x, y: seed.jev.y });
+  const [turns, setTurns] = useState<Turn[]>([
+    { kind: "question", text: seed.question },
+    { kind: "answer", answer: seed.answer, jev: seed.jev },
+  ]);
   const [draft, setDraft] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
 
-  const certainty = useMemo(() => confidenceScale(set.cells), [set]);
-  const sharp = certainty(active.jev.confidence);
+  useEffect(() => {
+    feedRef.current?.scrollTo({
+      top: feedRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [turns, note]);
 
-  const crossfadeTo = useCallback((next: Cell) => {
-    if (targetId.current === next.id) return;
-    targetId.current = next.id;
-    if (fadeTimer.current) window.clearTimeout(fadeTimer.current);
-    setVisible(false);
-    fadeTimer.current = window.setTimeout(() => {
-      setActive(next);
-      setVisible(true);
-    }, 140);
-  }, []);
+  const run = useCallback(
+    async (body: object, nextQuestion: string) => {
+      setBusy(true);
+      setNote(null);
+      try {
+        const response = await fetch("/api/steer", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error(await response.text());
 
-  const placePuck = useCallback(
-    (x: number, y: number) => {
-      const next = { x: clamp01(x), y: clamp01(y) };
-      setPuck(next);
-      crossfadeTo(nearestCell(set.cells, next.x, next.y));
-    },
-    [crossfadeTo, set],
-  );
-
-  const moveTo = useCallback(
-    (clientX: number, clientY: number) => {
-      const rect = gridRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      placePuck(
-        (clientX - rect.left) / rect.width,
-        (clientY - rect.top) / rect.height,
-      );
-    },
-    [placePuck],
-  );
-
-  useEffect(
-    () => () => {
-      if (fadeTimer.current) window.clearTimeout(fadeTimer.current);
+        for await (const event of readEvents(response)) {
+          if (event.type === "nudging") {
+            setNote(
+              event.attempt === 1
+                ? "Rewriting toward the puck"
+                : `Not there yet — nudge ${event.attempt}`,
+            );
+          }
+          if (event.type === "answer" && event.answer && event.jev) {
+            setAnswer(event.answer);
+            setJev(event.jev);
+            setQuestion(nextQuestion);
+            if (event.attempt === 0) setPuck({ x: event.jev.x, y: event.jev.y });
+            const { answer: got, jev: scored, gap, hit } = event;
+            setTurns((current) => [
+              ...current,
+              { kind: "answer", answer: got, jev: scored, gap, hit },
+            ]);
+            setNote(null);
+          }
+          if (event.type === "done" && event.hit === false) {
+            setNote(
+              `Closest it got was ${event.gap} away — the puck is asking for a position the model will not hold.`,
+            );
+          }
+          if (event.type === "error") setNote(event.error ?? "Something broke");
+        }
+      } catch (error) {
+        setNote(error instanceof Error ? error.message : "Something broke");
+      } finally {
+        setBusy(false);
+      }
     },
     [],
   );
 
-  useEffect(() => {
-    if (!dragging) return;
-    const onMove = (event: PointerEvent) => moveTo(event.clientX, event.clientY);
-    const onUp = () => setDragging(false);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [dragging, moveTo]);
+  const ask = useCallback(() => {
+    const asked = draft.trim();
+    if (!asked || busy) return;
+    setDraft("");
+    setTurns((current) => [...current, { kind: "question", text: asked }]);
+    void run({ question: asked }, asked);
+  }, [busy, draft, run]);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target && /input|textarea/i.test(target.tagName)) return;
-      const step = 1 / GRID;
-      const deltas: Record<string, [number, number]> = {
-        ArrowLeft: [-step, 0],
-        ArrowRight: [step, 0],
-        ArrowUp: [0, -step],
-        ArrowDown: [0, step],
-      };
-      const delta = deltas[event.key];
-      if (!delta) return;
-      event.preventDefault();
-      placePuck(puck.x + delta[0], puck.y + delta[1]);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [placePuck, puck]);
-
-  const ask = useCallback(async () => {
-    const question = draft.trim();
-    if (!question || status) return;
-    setError(null);
-    setStatus("Writing sixteen perspectives, then scoring them with Jev");
-    try {
-      const response = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question }),
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "Generation failed");
-      const next = body as Perspectives;
-      setSet(next);
-      targetId.current = null;
-      setPuck(START);
-      setActive(nearestCell(next.cells, START.x, START.y));
-      targetId.current = nearestCell(next.cells, START.x, START.y).id;
-      setVisible(true);
-      setDraft("");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Generation failed");
-    } finally {
-      setStatus(null);
-    }
-  }, [draft, status]);
-
-  const { axes } = set;
+  const steer = useCallback(
+    (target: Point) => {
+      if (busy) return;
+      void run(
+        {
+          question,
+          answer,
+          at: { x: jev.x, y: jev.y },
+          target,
+        },
+        question,
+      );
+    },
+    [answer, busy, jev, question, run],
+  );
 
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden lg:flex-row">
-      {/* left: the chat */}
-      <section className="flex min-h-0 w-full flex-col border-b border-[var(--line)] bg-[var(--panel)] lg:w-[46%] lg:max-w-[620px] lg:border-b-0 lg:border-r">
+      <section className="flex min-h-0 w-full flex-col border-b border-[var(--line)] bg-[var(--panel)] lg:w-[46%] lg:max-w-[600px] lg:border-b-0 lg:border-r">
         <header className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4">
           <div className="flex items-baseline gap-2">
             <h1 className="text-[13px] font-medium tracking-tight">
               Perspective Machine
             </h1>
             <span className="font-mono text-[11px] text-[var(--faint)]">
-              {set.model}
+              {seed.model}
             </span>
           </div>
           <ThemeToggle />
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
-          <div className="flex justify-end">
-            <p className="max-w-[80%] rounded-2xl rounded-br-md bg-[var(--bubble)] px-4 py-2.5 text-[14px] leading-relaxed">
-              {set.question}
-            </p>
-          </div>
-
-          <div
-            className="transition-opacity duration-150"
-            style={{ opacity: visible ? 1 : 0 }}
-          >
-            <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
-              {active.voice}
-            </p>
-            <p
-              className="max-w-[46ch] text-[15px] leading-[1.75] transition-all duration-300"
-              style={{
-                opacity: 0.72 + 0.28 * sharp,
-                filter: `blur(${(1 - sharp) * 0.9}px)`,
-              }}
-            >
-              {active.text}
-            </p>
-            <p className="mt-4 font-mono text-[11px] leading-relaxed text-[var(--faint)]">
-              {axes.x.min}/{axes.x.max} {active.jev.x.toFixed(2)} ·{" "}
-              {axes.y.min}/{axes.y.max} {active.jev.y.toFixed(2)} · confidence{" "}
-              {Math.round(active.jev.confidence * 100)}%
-              {active.jev.hedging ? " · hedging" : ""}
-            </p>
-          </div>
-
-          {status && (
-            <p className="animate-pulse font-mono text-[11px] text-[var(--faint)]">
-              {status}…
-            </p>
+        <div
+          ref={feedRef}
+          className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6"
+        >
+          {turns.map((turn, index) =>
+            turn.kind === "question" ? (
+              <div key={index} className="flex justify-end">
+                <p className="max-w-[80%] rounded-2xl rounded-br-md bg-[var(--bubble)] px-4 py-2.5 text-[14px] leading-relaxed">
+                  {turn.text}
+                </p>
+              </div>
+            ) : turn.kind === "note" ? (
+              <p key={index} className="font-mono text-[11px] text-[var(--faint)]">
+                {turn.text}
+              </p>
+            ) : (
+              <div key={index}>
+                <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
+                  {turn.answer.voice}
+                </p>
+                <p className="max-w-[48ch] text-[15px] leading-[1.75]">
+                  {turn.answer.text}
+                </p>
+                <p className="mt-3 font-mono text-[11px] leading-relaxed text-[var(--faint)]">
+                  jev {turn.jev.x.toFixed(2)}, {turn.jev.y.toFixed(2)} ·
+                  confidence {Math.round(turn.jev.confidence * 100)}%
+                  {turn.jev.hedging ? " · hedging" : ""}
+                  {turn.gap !== undefined
+                    ? turn.hit
+                      ? " · inside the puck"
+                      : ` · ${turn.gap} away`
+                    : ""}
+                </p>
+              </div>
+            ),
           )}
-          {error && (
-            <p className="font-mono text-[11px] text-[var(--foreground)]">
-              {error}
+
+          {note && (
+            <p className="animate-pulse font-mono text-[11px] text-[var(--faint)]">
+              {note}
             </p>
           )}
         </div>
@@ -208,7 +194,7 @@ export default function PerspectiveMachine() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            void ask();
+            ask();
           }}
           className="border-t border-[var(--line)] px-6 py-4"
         >
@@ -216,12 +202,12 @@ export default function PerspectiveMachine() {
             <textarea
               rows={1}
               value={draft}
-              disabled={Boolean(status)}
+              disabled={busy}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
-                  void ask();
+                  ask();
                 }
               }}
               placeholder="Ask a question…"
@@ -229,87 +215,43 @@ export default function PerspectiveMachine() {
             />
             <button
               type="submit"
-              disabled={Boolean(status) || !draft.trim()}
+              disabled={busy || !draft.trim()}
               className="rounded-lg bg-[var(--foreground)] px-3 py-1.5 text-[12px] font-medium text-[var(--background)] transition-opacity disabled:opacity-30"
             >
-              {status ? "Thinking" : "Ask"}
+              {busy ? "Working" : "Ask"}
             </button>
           </div>
           <p className="mt-2 font-mono text-[11px] text-[var(--faint)]">
-            A new question writes and scores sixteen answers — takes a moment.
+            Drag the puck to move the answer. Jev decides when it has arrived.
           </p>
         </form>
       </section>
 
-      {/* right: the grid */}
       <section className="flex min-h-0 flex-1 items-center justify-center p-8 lg:p-12">
-        <div className="w-full max-w-[560px]">
+        <div className="w-full max-w-[540px]">
           <div className="mb-3 flex items-baseline justify-between font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
-            <span>{axes.x.min}</span>
-            <span>{axes.y.max}</span>
-            <span>{axes.x.max}</span>
+            <span>{AXES.x.min}</span>
+            <span>{AXES.y.max}</span>
+            <span>{AXES.x.max}</span>
           </div>
 
-          <div
-            ref={gridRef}
-            onPointerDown={(event) => {
-              event.preventDefault();
-              setDragging(true);
-              moveTo(event.clientX, event.clientY);
-            }}
-            className="relative aspect-square w-full cursor-grab touch-none select-none rounded-lg border border-[var(--line-strong)] active:cursor-grabbing"
-          >
-            <div className="grid h-full w-full grid-cols-4 grid-rows-4 overflow-hidden rounded-lg">
-              {set.cells
-                .slice()
-                .sort((a, b) => a.row - b.row || a.col - b.col)
-                .map((cell) => {
-                  const cellSharp = certainty(cell.jev.confidence);
-                  return (
-                    <div
-                      key={cell.id}
-                      className="relative flex items-end border-[0.5px] border-[var(--line)] p-2 transition-colors duration-300"
-                      style={{
-                        background:
-                          cell.id === active.id ? "var(--fill)" : "transparent",
-                      }}
-                    >
-                      <span
-                        className="text-[11px] leading-tight text-[var(--muted)] transition-all duration-300"
-                        style={{
-                          opacity: 0.4 + 0.6 * cellSharp,
-                          filter: `blur(${(1 - cellSharp) * 2.2}px)`,
-                        }}
-                      >
-                        {cell.voice}
-                      </span>
-                      {cell.jev.hedging && (
-                        <span
-                          className="absolute right-2 top-2 h-1 w-1 rounded-full bg-[var(--faint)]"
-                          title="Jev flagged this answer as hedging"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
+          <Plane
+            puck={puck}
+            jev={jev}
+            radius={RADIUS}
+            busy={busy}
+            onMove={(point) =>
+              setPuck({ x: clamp01(point.x), y: clamp01(point.y) })
+            }
+            onRelease={steer}
+          />
 
-            <div
-              className="pointer-events-none absolute h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--foreground)] bg-[var(--background)]"
-              style={{
-                left: `${puck.x * 100}%`,
-                top: `${puck.y * 100}%`,
-                transition: dragging
-                  ? "none"
-                  : "left 220ms ease, top 220ms ease",
-              }}
-            >
-              <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--foreground)]" />
-            </div>
-          </div>
-
-          <div className="mt-3 flex justify-center font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
-            <span>{axes.y.min}</span>
+          <div className="mt-3 flex items-baseline justify-between font-mono text-[11px] text-[var(--faint)]">
+            <span className="uppercase tracking-[0.14em]">&nbsp;</span>
+            <span className="uppercase tracking-[0.14em]">{AXES.y.min}</span>
+            <span>
+              puck {puck.x.toFixed(2)}, {puck.y.toFixed(2)}
+            </span>
           </div>
         </div>
       </section>

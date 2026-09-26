@@ -1,20 +1,26 @@
 /**
- * One question in, sixteen scored perspectives out.
+ * The steering loop, server side.
  *
- *   1. one LLM call  -> 16 answers, one per grid cell, each prompted with its axis position
- *   2. one Jev batch -> each answer scored on both axes + a hedging check
+ *   - the LLM writes one answer
+ *   - Jev scores where that answer actually sits on the two axes
+ *   - drag the puck and the LLM is nudged by the delta, Jev re-scores, repeat
+ *     until the answer lands inside the puck's radius
  *
- * Runs on the server only. The precomputed set in src/data/responses.json is
- * produced by the same steps in scripts/precompute.mjs.
+ * The LLM writes; Jev judges. Neither does the other's job.
  */
 
-import { AXES, GRID, type Cell, type Perspectives } from "./perspectives";
+import { AXES, RADIUS, type Axes, type JevScore } from "./perspectives";
+
+export { RADIUS };
 
 const JEV_URL = "https://api.typesafe.ai/v1/systemone";
 const JEV_MODEL = process.env.JEV_MODEL ?? "jev-latest";
 
+/** Nudges per drag before we stop and keep the closest attempt. */
+export const MAX_NUDGES = 6;
+
 // Ordered rubrics: Jev returns a fractional index into these, which we
-// normalise back to 0-1 for the grid.
+// normalise back to 0-1 for the plane.
 const RUBRICS = {
   x: [
     "purely individual: only the asker's own life, choices, and feelings",
@@ -30,12 +36,12 @@ const RUBRICS = {
   ],
 };
 
-type Answer = { voice: string; text: string };
+export type Answer = { voice: string; text: string };
+export type Point = { x: number; y: number };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Free LLM tiers return 429/503 under load; one run is one shot, so back off
-// rather than lose the 16 answers.
+// Free LLM tiers return 429/503 under load; back off rather than drop a nudge.
 async function withRetries<T>(attempt: () => Promise<T>): Promise<T> {
   const delays = [1500, 4000, 9000];
   for (let i = 0; ; i += 1) {
@@ -57,49 +63,6 @@ function detectProvider() {
   if (key.startsWith("gsk_")) return "groq";
   if (key.startsWith("sk-")) return "openai";
   return "gemini";
-}
-
-function positions() {
-  const cells = [];
-  for (let row = 0; row < GRID; row += 1) {
-    for (let col = 0; col < GRID; col += 1) {
-      cells.push({
-        id: `c-${col}-${row}`,
-        col,
-        row,
-        x: (col + 0.5) / GRID,
-        y: 1 - (row + 0.5) / GRID,
-      });
-    }
-  }
-  return cells;
-}
-
-function describe(cell: { x: number; y: number }) {
-  const x = Math.round(cell.x * 100);
-  const y = Math.round(cell.y * 100);
-  return `${x}% toward "${AXES.x.max}" (0% = "${AXES.x.min}"), ${y}% toward "${AXES.y.max}" (0% = "${AXES.y.min}")`;
-}
-
-function buildPrompt(question: string, cells: { x: number; y: number }[]) {
-  return [
-    `Question: "${question}"`,
-    "",
-    "Write 16 different answers. Each one comes from a different worldview, fixed by its position on two axes:",
-    `  x: ${AXES.x.min} <-> ${AXES.x.max}`,
-    `  y: ${AXES.y.min} <-> ${AXES.y.max}`,
-    "",
-    "Positions:",
-    ...cells.map((cell, index) => `  ${index + 1}. ${describe(cell)}`),
-    "",
-    "Rules:",
-    "- Each answer takes a real position. No hedging, no 'it depends', no listing both sides.",
-    "- 2-4 sentences. Direct address to the asker. No preamble, no headings, no markdown.",
-    "- Answers must disagree with each other. Someone reading two of them should feel the tension.",
-    "- Give each one a short label (2-4 words) naming the voice speaking, not the axis position.",
-    "",
-    'Return strict JSON: {"answers":[{"voice":"...","text":"..."}]} with exactly 16 items in the order listed.',
-  ].join("\n");
 }
 
 // OpenAI-compatible chat completions; Groq speaks the same protocol.
@@ -159,7 +122,7 @@ async function callAnthropic(prompt: string) {
     },
     body: JSON.stringify({
       model: process.env.LLM_MODEL ?? "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      max_tokens: 1024,
       messages: [
         { role: "user", content: prompt },
         { role: "assistant", content: "{" },
@@ -173,13 +136,9 @@ async function callAnthropic(prompt: string) {
   return JSON.parse(`{${body.content[0].text}`);
 }
 
-async function writeAnswers(
-  question: string,
-  cells: { x: number; y: number }[],
-): Promise<Answer[]> {
-  const prompt = buildPrompt(question, cells);
+async function callLLM(prompt: string): Promise<Answer> {
   const provider = detectProvider();
-  const providers: Record<string, () => Promise<{ answers?: Answer[] }>> = {
+  const providers: Record<string, () => Promise<Partial<Answer>>> = {
     anthropic: () => callAnthropic(prompt),
     gemini: () => callGemini(prompt),
     groq: () =>
@@ -198,57 +157,136 @@ async function writeAnswers(
   const call = providers[provider];
   if (!call) throw new Error(`Unknown LLM_PROVIDER: ${provider}`);
   const result = await withRetries(call);
-  const answers = result.answers;
-  if (!Array.isArray(answers) || answers.length !== 16) {
-    throw new Error(`Expected 16 answers, got ${answers?.length}`);
-  }
-  return answers;
+  if (!result.text) throw new Error("The model returned no answer");
+  return { voice: result.voice ?? "A view", text: result.text };
+}
+
+const SHAPE =
+  'Return strict JSON: {"voice":"2-4 words naming who is speaking","text":"the answer"}.';
+const STYLE = [
+  "- Take a real position. No hedging, no 'it depends', no both-sides.",
+  "- 2-4 sentences, speaking directly to the asker. No preamble, no markdown.",
+];
+
+export async function firstAnswer(question: string) {
+  return callLLM(
+    [
+      `Question: "${question}"`,
+      "",
+      "Answer it from whatever standpoint you would naturally take.",
+      ...STYLE,
+      "",
+      SHAPE,
+    ].join("\n"),
+  );
+}
+
+/** Plain-language version of the drag, so the model is steered, not coordinated. */
+function describeDelta(from: Point, to: Point, axes: Axes) {
+  const move = (delta: number, min: string, max: string) => {
+    const size = Math.abs(delta);
+    if (size < 0.06) return `hold this axis exactly where it is`;
+    const amount =
+      size > 0.45 ? "far more" : size > 0.2 ? "clearly more" : "slightly more";
+    return `make it ${amount} ${delta > 0 ? max : min}`;
+  };
+  return [
+    move(to.x - from.x, axes.x.min, axes.x.max),
+    move(to.y - from.y, axes.y.min, axes.y.max),
+  ];
+}
+
+export async function nudge({
+  question,
+  answer,
+  from,
+  to,
+}: {
+  question: string;
+  answer: Answer;
+  from: Point;
+  to: Point;
+}) {
+  const [moveX, moveY] = describeDelta(from, to, AXES);
+  return callLLM(
+    [
+      `Question: "${question}"`,
+      "",
+      "Current answer:",
+      answer.text,
+      "",
+      "Two axes describe where an answer stands:",
+      `  x: ${AXES.x.min} (0.00) <-> ${AXES.x.max} (1.00)`,
+      `  y: ${AXES.y.min} (0.00) <-> ${AXES.y.max} (1.00)`,
+      "",
+      `An independent judge placed the current answer at x ${from.x.toFixed(2)}, y ${from.y.toFixed(2)}.`,
+      `It needs to sit at x ${to.x.toFixed(2)}, y ${to.y.toFixed(2)}: ${moveX}, and ${moveY}.`,
+      "",
+      "Rewrite the answer so it genuinely stands there. Same question, same",
+      "person being addressed. Do not describe the axes or mention the move -",
+      "just answer from that standpoint. If an axis only needs a small move,",
+      "change it only slightly: overshooting to the extreme is as wrong as not",
+      "moving at all.",
+      ...STYLE,
+      "",
+      SHAPE,
+    ].join("\n"),
+  );
 }
 
 type JevAnswer = { score: number; confidence: number; noul: number };
 
-async function scoreWithJev(question: string, answer: Answer) {
-  const response = await fetch(JEV_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${process.env.JEV_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: JEV_MODEL,
-      state: { question, answer: answer.text, voice: answer.voice, axes: AXES },
-      questions: {
-        x: {
-          type: "score",
-          instructions: `Does this answer frame the decision as one person's own life ("${AXES.x.min}") or as something embedded in other people ("${AXES.x.max}")?`,
-          criteria: RUBRICS.x,
-        },
-        y: {
-          type: "score",
-          instructions: `Is this answer grounded in "${AXES.y.min}" concerns or "${AXES.y.max}" ones?`,
-          criteria: RUBRICS.y,
-        },
-        hedging: {
-          type: "noul",
-          instructions:
-            "Does this answer hedge - refuse to commit to a position, or present both sides as equally valid?",
-        },
-      },
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`Jev ${response.status}: ${await response.text()}`);
-  }
-  return response.json() as Promise<{
-    model?: string;
-    answers: Record<string, JevAnswer>;
-  }>;
-}
-
 const round = (value: number) => Math.round(value * 100) / 100;
 
-function readJev(payload: { model?: string; answers: Record<string, JevAnswer> }) {
-  const { answers } = payload;
+export async function score(
+  question: string,
+  answer: Answer,
+): Promise<JevScore & { model: string }> {
+  const request = async () => {
+    const response = await fetch(JEV_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${process.env.JEV_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: JEV_MODEL,
+        state: {
+          question,
+          answer: answer.text,
+          voice: answer.voice,
+          axes: AXES,
+        },
+        questions: {
+          x: {
+            type: "score",
+            instructions: `Does this answer frame the decision as one person's own life ("${AXES.x.min}") or as something embedded in other people ("${AXES.x.max}")?`,
+            criteria: RUBRICS.x,
+          },
+          y: {
+            type: "score",
+            instructions: `Is this answer grounded in "${AXES.y.min}" concerns or "${AXES.y.max}" ones?`,
+            criteria: RUBRICS.y,
+          },
+          hedging: {
+            type: "noul",
+            instructions:
+              "Does this answer hedge - refuse to commit to a position, or present both sides as equally valid?",
+          },
+        },
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Jev ${response.status}: ${await response.text()}`);
+    }
+    return response.json() as Promise<{
+      model?: string;
+      answers: Record<string, JevAnswer>;
+    }>;
+  };
+
+  const payload = await withRetries(request);
+  const answers = payload.answers;
   const axis = (id: "x" | "y") =>
     round(answers[id].score / (RUBRICS[id].length - 1));
   return {
@@ -262,35 +300,11 @@ function readJev(payload: { model?: string; answers: Record<string, JevAnswer> }
   };
 }
 
-export async function buildPerspectives(
-  question: string,
-): Promise<Perspectives> {
+export function distance(a: Point, b: Point) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+export function assertKeys() {
   if (!process.env.JEV_API_KEY) throw new Error("JEV_API_KEY is not set");
   if (!process.env.LLM_API_KEY) throw new Error("LLM_API_KEY is not set");
-
-  const cells = positions();
-  const answers = await writeAnswers(question, cells);
-  const scores = await Promise.all(
-    answers.map((answer) =>
-      withRetries(() => scoreWithJev(question, answer)).then(readJev),
-    ),
-  );
-
-  return {
-    question,
-    axes: AXES,
-    model: scores[0].model,
-    generatedAt: new Date().toISOString(),
-    cells: cells.map((cell, index) => ({
-      ...cell,
-      voice: answers[index].voice,
-      text: answers[index].text,
-      jev: {
-        x: scores[index].x,
-        y: scores[index].y,
-        hedging: scores[index].hedging,
-        confidence: scores[index].confidence,
-      },
-    })) as Cell[],
-  };
 }
