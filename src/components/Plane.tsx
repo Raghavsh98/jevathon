@@ -162,8 +162,7 @@ export default function Plane({
           style={{
             backgroundImage:
               "linear-gradient(in oklab 207.29deg, oklab(73.9% 0 0) 35.79%, oklab(100% 0 0) 141.48%)",
-            boxShadow:
-              "#FFFFFF33 0px 2px 0px inset, #3636365C 0px 0px 4px 6px",
+            boxShadow: "#FFFFFF33 0px 2px 0px inset",
             outline: "4px solid #F2F2F2",
           }}
         />
