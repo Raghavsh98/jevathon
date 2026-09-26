@@ -60,6 +60,10 @@ export default function PerspectiveMachine() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // What the loop is doing right now, shown as a placeholder answer.
+  const [stage, setStage] = useState<{ label: string; attempt: number } | null>(
+    null,
+  );
   // Lets the user call off the loop mid-nudge and keep what is on screen.
   const running = useRef<AbortController | null>(null);
 
@@ -68,7 +72,7 @@ export default function PerspectiveMachine() {
       top: feedRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [turns, note]);
+  }, [turns, note, stage]);
 
   const run = useCallback(
     async (body: object, nextQuestion: string) => {
@@ -76,6 +80,7 @@ export default function PerspectiveMachine() {
       running.current = controller;
       setBusy(true);
       setNote(null);
+      setStage({ label: "Writing an answer", attempt: 0 });
       try {
         const response = await fetch("/api/steer", {
           method: "POST",
@@ -105,14 +110,16 @@ export default function PerspectiveMachine() {
                   .join("\n"),
               },
             ]);
-            setNote("Jev is placing the answer");
+            setStage({ label: "Jev is placing the answer", attempt: 0 });
           }
           if (event.type === "nudging") {
-            setNote(
-              event.attempt === 1
-                ? "Rewriting toward the puck"
-                : `Not there yet — nudge ${event.attempt}`,
-            );
+            setStage({
+              label:
+                event.attempt === 1
+                  ? "Rewriting toward the puck"
+                  : "Not there yet, rewriting again",
+              attempt: event.attempt ?? 0,
+            });
           }
           if (event.type === "answer" && event.answer && event.jev) {
             setAnswer(event.answer);
@@ -125,6 +132,9 @@ export default function PerspectiveMachine() {
               { kind: "answer", answer: got, jev: scored, gap, hit },
             ]);
             setNote(null);
+            setStage(
+              hit === false ? { label: "Jev is re-reading it", attempt: 0 } : null,
+            );
           }
           if (event.type === "done" && event.hit === false) {
             setNote(
@@ -138,6 +148,7 @@ export default function PerspectiveMachine() {
         else setNote(error instanceof Error ? error.message : "Something broke");
       } finally {
         running.current = null;
+        setStage(null);
         setBusy(false);
       }
     },
@@ -183,6 +194,9 @@ export default function PerspectiveMachine() {
 
   // In compass mode the plane is known before anything is asked.
   const shown = frame ?? (mode === "compass" ? POLITICAL_COMPASS : null);
+  // How far the answer on screen still is from where the puck sits.
+  const gap =
+    jev && puck ? Math.hypot(jev.x - puck.x, jev.y - puck.y) : null;
 
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden lg:flex-row">
@@ -205,7 +219,7 @@ export default function PerspectiveMachine() {
           ref={feedRef}
           className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6"
         >
-          {turns.length === 0 && !note && (
+          {turns.length === 0 && !note && !stage && (
             <p className="m-auto max-w-[34ch] text-center text-[14px] leading-relaxed text-[var(--faint)]">
               {mode === "compass"
                 ? "Ask anything. The answer gets plotted on the Political Compass, and you can drag it somewhere else."
@@ -249,10 +263,27 @@ export default function PerspectiveMachine() {
             ),
           )}
 
+          {stage && (
+            <div className="animate-pulse">
+              <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
+                {stage.label}
+                {stage.attempt > 0 ? ` · nudge ${stage.attempt} of 6` : ""}
+              </p>
+              <div className="max-w-[48ch] space-y-2.5">
+                <div className="h-3 w-full rounded-full bg-[var(--bubble)]" />
+                <div className="h-3 w-[92%] rounded-full bg-[var(--bubble)]" />
+                <div className="h-3 w-[64%] rounded-full bg-[var(--bubble)]" />
+              </div>
+              {stage.attempt > 0 && gap !== null && (
+                <p className="mt-3 font-mono text-[11px] text-[var(--faint)]">
+                  {gap.toFixed(2)} from the puck
+                </p>
+              )}
+            </div>
+          )}
+
           {note && (
-            <p className="animate-pulse font-mono text-[11px] text-[var(--faint)]">
-              {note}
-            </p>
+            <p className="font-mono text-[11px] text-[var(--faint)]">{note}</p>
           )}
         </div>
 

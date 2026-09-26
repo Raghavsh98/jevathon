@@ -1,7 +1,16 @@
 # Perspective Machine
 
-Ask one question. Jev says where the answer stands. Drag the puck somewhere
-else on the plane and the model is nudged until it genuinely stands there.
+A chat where you can move the opinion.
+
+Ask one question. The model writes a single answer, and Jev says where that
+answer actually stands on a two-axis plane. Drag the puck somewhere else and
+the model is rewritten, re-judged, and rewritten again until it genuinely
+stands where you put it.
+
+The point is that the model does not get to mark its own homework. It writes;
+Jev places. A rewrite only counts as having moved when Jev — a separate judge
+that returns typed decisions with calibrated probabilities, never prose — says
+it landed inside your puck.
 
 The plane has two modes:
 
@@ -54,4 +63,15 @@ OpenAI, Anthropic, Gemini, Groq, and OpenRouter are supported; override with
 
 Nothing is precomputed: the chat starts empty and the plane fills in once you
 ask. `jev-latest` moves between versions, so the header shows the version Jev
-reports for the answer on screen.
+reports for the answer on screen. Free model tiers stall sometimes, so every
+call times out and retries rather than leaving the panel hanging.
+
+## Where things live
+
+| | |
+| --- | --- |
+| `src/components/PerspectiveMachine.tsx` | chat, streaming state, the loop's client side |
+| `src/components/Plane.tsx` | the plane, the puck, Jev's dot |
+| `src/lib/pipeline.ts` | model calls, Jev scoring, the nudge |
+| `src/lib/perspectives.ts` | the Political Compass frame and its rubrics |
+| `src/app/api/steer/route.ts` | streams each attempt to the browser |

@@ -24,7 +24,11 @@ export type Point = { x: number; y: number };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Free LLM tiers return 429/503 under load; back off rather than drop a nudge.
+/** A free model that stalls mid-answer is worse than one that fails fast. */
+const TIMEOUT = Number(process.env.LLM_TIMEOUT_MS ?? 25000);
+
+// Free LLM tiers return 429/503 under load, and sometimes simply hang; back
+// off and try again rather than drop a nudge or freeze the loop.
 async function withRetries<T>(attempt: () => Promise<T>): Promise<T> {
   const delays = [1500, 4000, 9000, 15000, 20000];
   for (let i = 0; ; i += 1) {
@@ -32,7 +36,7 @@ async function withRetries<T>(attempt: () => Promise<T>): Promise<T> {
       return await attempt();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const retryable = /\b(429|500|502|503|504)\b/.test(message);
+      const retryable = /\b(429|500|502|503|504|timed out)\b/.test(message);
       if (!retryable || i >= delays.length) throw error;
       await sleep(delays[i]);
     }
@@ -47,6 +51,16 @@ function detectProvider() {
   if (key.startsWith("gsk_")) return "groq";
   if (key.startsWith("sk-")) return "openai";
   return "gemini";
+}
+
+function expire(label: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new Error(`${label} timed out after ${TIMEOUT}ms`));
+  }, TIMEOUT);
+  // Node keeps the process awake for a pending timer otherwise.
+  controller.signal.addEventListener("abort", () => clearTimeout(timer));
+  return controller.signal;
 }
 
 // OpenAI-compatible chat completions; Groq speaks the same protocol.
@@ -65,6 +79,7 @@ async function callOpenAI(
       response_format: { type: "json_object" },
       messages: [{ role: "user", content: prompt }],
     }),
+    signal: expire(label),
   });
   if (!response.ok) {
     throw new Error(`${label} ${response.status}: ${await response.text()}`);
@@ -74,7 +89,7 @@ async function callOpenAI(
 }
 
 async function callGemini(prompt: string) {
-  const model = process.env.LLM_MODEL ?? "gemini-3.8-flash";
+  const model = process.env.LLM_MODEL ?? "gemini-3.1-flash-lite";
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -87,6 +102,7 @@ async function callGemini(prompt: string) {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { responseMimeType: "application/json" },
       }),
+      signal: expire("Gemini"),
     },
   );
   if (!response.ok) {
@@ -112,6 +128,7 @@ async function callAnthropic(prompt: string) {
         { role: "assistant", content: "{" },
       ],
     }),
+    signal: expire("Anthropic"),
   });
   if (!response.ok) {
     throw new Error(`Anthropic ${response.status}: ${await response.text()}`);

@@ -156,7 +156,17 @@ export default function Plane({
             : "left 220ms ease, top 220ms ease, border-color 200ms ease, background 200ms ease",
         }}
       >
-        <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--foreground)]" />
+        {/* the handle itself, from Paper */}
+        <span
+          className="absolute left-1/2 top-1/2 block h-[33px] w-[33px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{
+            backgroundImage:
+              "linear-gradient(in oklab 207.29deg, oklab(73.9% 0 0) 35.79%, oklab(100% 0 0) 141.48%)",
+            boxShadow:
+              "#FFFFFF33 0px 2px 0px inset, #3636365C 0px 0px 4px 6px",
+            outline: "4px solid #F2F2F2",
+          }}
+        />
       </div>
       )}
     </div>
