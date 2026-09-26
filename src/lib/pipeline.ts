@@ -136,7 +136,8 @@ async function callLLM(prompt: string): Promise<Json> {
     openrouter: () =>
       callOpenAI(prompt, {
         url: "https://openrouter.ai/api/v1/chat/completions",
-        model: process.env.LLM_MODEL ?? "deepseek/deepseek-chat-v3.1:free",
+        model:
+          process.env.LLM_MODEL ?? "nvidia/nemotron-3-super-120b-a12b:free",
         label: "OpenRouter",
       }),
     openai: () =>
