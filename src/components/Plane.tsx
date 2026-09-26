@@ -8,9 +8,8 @@ type Point = { x: number; y: number };
 type Props = {
   /** Where the user wants the answer to stand. Null until there is an answer. */
   puck: Point | null;
-  /** Where Jev says the current answer actually stands. */
+  /** Where Jev says the current answer stands. Only gates dragging. */
   jev: JevScore | null;
-  radius: number;
   busy: boolean;
   onMove: (point: Point) => void;
   onRelease: (point: Point) => void;
@@ -20,14 +19,7 @@ type Props = {
 const top = (y: number) => `${(1 - y) * 100}%`;
 const left = (x: number) => `${x * 100}%`;
 
-export default function Plane({
-  puck,
-  jev,
-  radius,
-  busy,
-  onMove,
-  onRelease,
-}: Props) {
+export default function Plane({ puck, jev, busy, onMove, onRelease }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   // The last point the pointer produced; onRelease needs it without waiting
@@ -64,8 +56,6 @@ export default function Plane({
   }, [dragging, onMove, onRelease, pointAt]);
 
   const live = puck !== null && jev !== null;
-  const gap = live ? Math.hypot(puck.x - jev.x, puck.y - jev.y) : 0;
-  const hit = gap <= radius;
 
   return (
     <div
@@ -98,75 +88,21 @@ export default function Plane({
         ))}
       </div>
 
-      {/* the gap Jev still has to close */}
-      {jev && puck && (
-        <svg className="pointer-events-none absolute inset-0 h-full w-full">
-          <line
-            x1={left(jev.x)}
-            y1={top(jev.y)}
-            x2={left(puck.x)}
-            y2={top(puck.y)}
-            stroke="var(--line-strong)"
-            strokeWidth="1"
-            strokeDasharray="3 3"
-            opacity={hit ? 0 : 1}
-            style={{ transition: "opacity 300ms ease" }}
-          />
-        </svg>
-      )}
-
-      {/* where Jev placed the answer */}
-      {jev && (
-      <div
-        className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
-        style={{
-          left: left(jev.x),
-          top: top(jev.y),
-          transition: "left 400ms ease, top 400ms ease",
-        }}
-      >
-        <span
-          className="block h-2.5 w-2.5 rounded-full bg-[var(--foreground)]"
-          style={{
-            opacity: 0.35 + 0.65 * jev.confidence,
-            filter: `blur(${(1 - jev.confidence) * 2.5}px)`,
-          }}
-        />
-        {jev.hedging && (
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--faint)]">
-            hedging
-          </span>
-        )}
-      </div>
-      )}
-
-      {/* where the user wants it */}
+      {/* the puck is the only thing on the plane; Jev's own score and the
+          radius it has to land in stay in the chat, not drawn over the grid */}
       {puck && (
-      <div
-        className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border"
-        style={{
-          left: left(puck.x),
-          top: top(puck.y),
-          width: `${radius * 200}%`,
-          height: `${radius * 200}%`,
-          borderColor: hit ? "var(--foreground)" : "var(--line-strong)",
-          background: hit ? "var(--fill)" : "transparent",
-          transition: dragging
-            ? "border-color 200ms ease, background 200ms ease"
-            : "left 220ms ease, top 220ms ease, border-color 200ms ease, background 200ms ease",
-        }}
-      >
-        {/* the handle itself, from Paper */}
         <span
-          className="absolute left-1/2 top-1/2 block h-[33px] w-[33px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          className="pointer-events-none absolute block h-[33px] w-[33px] -translate-x-1/2 -translate-y-1/2 rounded-full"
           style={{
+            left: left(puck.x),
+            top: top(puck.y),
             backgroundImage:
               "linear-gradient(in oklab 207.29deg, oklab(73.9% 0 0) 35.79%, oklab(100% 0 0) 141.48%)",
             boxShadow: "#FFFFFF33 0px 2px 0px inset",
             outline: "4px solid #F2F2F2",
+            transition: dragging ? "none" : "left 220ms ease, top 220ms ease",
           }}
         />
-      </div>
       )}
     </div>
   );
