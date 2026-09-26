@@ -1,33 +1,17 @@
 /**
- * Regenerates src/data/responses.json.
+ * One question in, sixteen scored perspectives out.
  *
- *   1. one LLM call  -> 16 responses, one per grid cell, each prompted with its axis position
- *   2. one Jev batch -> each response scored on both axes + a hedging check
- *   3. write the file; the app reads it statically and never calls a network at runtime
+ *   1. one LLM call  -> 16 answers, one per grid cell, each prompted with its axis position
+ *   2. one Jev batch -> each answer scored on both axes + a hedging check
  *
- * Usage:
- *   LLM_API_KEY=... JEV_API_KEY=... node scripts/precompute.mjs
- *   LLM_PROVIDER=anthropic node scripts/precompute.mjs
- *   JEV_API_KEY=... node scripts/precompute.mjs --score-only   # keep texts, re-score
+ * Runs on the server only. The precomputed set in src/data/responses.json is
+ * produced by the same steps in scripts/precompute.mjs.
  */
 
-import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import process from "node:process";
-
-const OUT = path.join(process.cwd(), "src", "data", "responses.json");
-const GRID = 4;
-
-const QUESTION =
-  process.env.QUESTION ?? "Should I quit my job to build my own thing?";
-const AXES = {
-  x: { min: "individual", max: "collective" },
-  y: { min: "material", max: "spiritual" },
-};
+import { AXES, GRID, type Cell, type Perspectives } from "./perspectives";
 
 const JEV_URL = "https://api.typesafe.ai/v1/systemone";
 const JEV_MODEL = process.env.JEV_MODEL ?? "jev-latest";
-const SCORE_ONLY = process.argv.includes("--score-only");
 
 // Ordered rubrics: Jev returns a fractional index into these, which we
 // normalise back to 0-1 for the grid.
@@ -46,19 +30,21 @@ const RUBRICS = {
   ],
 };
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+type Answer = { voice: string; text: string };
 
-// Free LLM tiers return 429/503 under load; the whole run is one shot, so
-// back off rather than lose the 16 answers.
-async function withRetries(label, attempt) {
-  const delays = [2000, 5000, 12000, 25000];
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Free LLM tiers return 429/503 under load; one run is one shot, so back off
+// rather than lose the 16 answers.
+async function withRetries<T>(attempt: () => Promise<T>): Promise<T> {
+  const delays = [1500, 4000, 9000];
   for (let i = 0; ; i += 1) {
     try {
       return await attempt();
     } catch (error) {
-      const retryable = /\b(429|500|502|503|504)\b/.test(error.message);
+      const message = error instanceof Error ? error.message : String(error);
+      const retryable = /\b(429|500|502|503|504)\b/.test(message);
       if (!retryable || i >= delays.length) throw error;
-      console.warn(`${label} busy, retrying in ${delays[i] / 1000}s`);
       await sleep(delays[i]);
     }
   }
@@ -68,12 +54,10 @@ function detectProvider() {
   if (process.env.LLM_PROVIDER) return process.env.LLM_PROVIDER;
   const key = process.env.LLM_API_KEY ?? "";
   if (key.startsWith("sk-ant")) return "anthropic";
-  if (key.startsWith("AIza")) return "gemini";
   if (key.startsWith("gsk_")) return "groq";
-  return "openai";
+  if (key.startsWith("sk-")) return "openai";
+  return "gemini";
 }
-
-const provider = detectProvider();
 
 function positions() {
   const cells = [];
@@ -91,15 +75,15 @@ function positions() {
   return cells;
 }
 
-function describe(cell) {
+function describe(cell: { x: number; y: number }) {
   const x = Math.round(cell.x * 100);
   const y = Math.round(cell.y * 100);
   return `${x}% toward "${AXES.x.max}" (0% = "${AXES.x.min}"), ${y}% toward "${AXES.y.max}" (0% = "${AXES.y.min}")`;
 }
 
-function buildPrompt(cells) {
+function buildPrompt(question: string, cells: { x: number; y: number }[]) {
   return [
-    `Question: "${QUESTION}"`,
+    `Question: "${question}"`,
     "",
     "Write 16 different answers. Each one comes from a different worldview, fixed by its position on two axes:",
     `  x: ${AXES.x.min} <-> ${AXES.x.max}`,
@@ -119,7 +103,10 @@ function buildPrompt(cells) {
 }
 
 // OpenAI-compatible chat completions; Groq speaks the same protocol.
-async function callOpenAI(prompt, { url, model, label }) {
+async function callOpenAI(
+  prompt: string,
+  { url, model, label }: { url: string; model: string; label: string },
+) {
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -139,7 +126,7 @@ async function callOpenAI(prompt, { url, model, label }) {
   return JSON.parse(body.choices[0].message.content);
 }
 
-async function callGemini(prompt) {
+async function callGemini(prompt: string) {
   const model = process.env.LLM_MODEL ?? "gemini-3-flash-preview";
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -147,7 +134,7 @@ async function callGemini(prompt) {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-goog-api-key": process.env.LLM_API_KEY,
+        "x-goog-api-key": process.env.LLM_API_KEY ?? "",
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
@@ -162,12 +149,12 @@ async function callGemini(prompt) {
   return JSON.parse(body.candidates[0].content.parts[0].text);
 }
 
-async function callAnthropic(prompt) {
+async function callAnthropic(prompt: string) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": process.env.LLM_API_KEY,
+      "x-api-key": process.env.LLM_API_KEY ?? "",
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
@@ -186,9 +173,13 @@ async function callAnthropic(prompt) {
   return JSON.parse(`{${body.content[0].text}`);
 }
 
-async function writeAnswers(cells) {
-  const prompt = buildPrompt(cells);
-  const providers = {
+async function writeAnswers(
+  question: string,
+  cells: { x: number; y: number }[],
+): Promise<Answer[]> {
+  const prompt = buildPrompt(question, cells);
+  const provider = detectProvider();
+  const providers: Record<string, () => Promise<{ answers?: Answer[] }>> = {
     anthropic: () => callAnthropic(prompt),
     gemini: () => callGemini(prompt),
     groq: () =>
@@ -206,15 +197,17 @@ async function writeAnswers(cells) {
   };
   const call = providers[provider];
   if (!call) throw new Error(`Unknown LLM_PROVIDER: ${provider}`);
-  const result = await withRetries(provider, call);
-  const answers = result.answers ?? result.responses;
+  const result = await withRetries(call);
+  const answers = result.answers;
   if (!Array.isArray(answers) || answers.length !== 16) {
     throw new Error(`Expected 16 answers, got ${answers?.length}`);
   }
   return answers;
 }
 
-async function scoreWithJev(answer) {
+type JevAnswer = { score: number; confidence: number; noul: number };
+
+async function scoreWithJev(question: string, answer: Answer) {
   const response = await fetch(JEV_URL, {
     method: "POST",
     headers: {
@@ -223,12 +216,7 @@ async function scoreWithJev(answer) {
     },
     body: JSON.stringify({
       model: JEV_MODEL,
-      state: {
-        question: QUESTION,
-        answer: answer.text,
-        voice: answer.voice,
-        axes: AXES,
-      },
+      state: { question, answer: answer.text, voice: answer.voice, axes: AXES },
       questions: {
         x: {
           type: "score",
@@ -251,14 +239,18 @@ async function scoreWithJev(answer) {
   if (!response.ok) {
     throw new Error(`Jev ${response.status}: ${await response.text()}`);
   }
-  return response.json();
+  return response.json() as Promise<{
+    model?: string;
+    answers: Record<string, JevAnswer>;
+  }>;
 }
 
-const round = (value) => Math.round(value * 100) / 100;
+const round = (value: number) => Math.round(value * 100) / 100;
 
-function readJev(payload) {
+function readJev(payload: { model?: string; answers: Record<string, JevAnswer> }) {
   const { answers } = payload;
-  const axis = (id) => round(answers[id].score / (RUBRICS[id].length - 1));
+  const axis = (id: "x" | "y") =>
+    round(answers[id].score / (RUBRICS[id].length - 1));
   return {
     x: axis("x"),
     y: axis("y"),
@@ -270,31 +262,22 @@ function readJev(payload) {
   };
 }
 
-async function existingAnswers() {
-  const current = JSON.parse(await readFile(OUT, "utf8"));
-  return current.cells.map((cell) => ({ voice: cell.voice, text: cell.text }));
-}
-
-async function main() {
+export async function buildPerspectives(
+  question: string,
+): Promise<Perspectives> {
   if (!process.env.JEV_API_KEY) throw new Error("JEV_API_KEY is not set");
-  if (!SCORE_ONLY && !process.env.LLM_API_KEY) {
-    throw new Error("LLM_API_KEY is not set (or pass --score-only)");
-  }
+  if (!process.env.LLM_API_KEY) throw new Error("LLM_API_KEY is not set");
 
   const cells = positions();
-  const answers = SCORE_ONLY
-    ? await existingAnswers()
-    : await writeAnswers(cells);
+  const answers = await writeAnswers(question, cells);
   const scores = await Promise.all(
     answers.map((answer) =>
-      withRetries("jev", () => scoreWithJev(answer)).then(readJev),
+      withRetries(() => scoreWithJev(question, answer)).then(readJev),
     ),
   );
 
-  console.log("jev model:", scores[0].model);
-
-  const payload = {
-    question: QUESTION,
+  return {
+    question,
     axes: AXES,
     model: scores[0].model,
     generatedAt: new Date().toISOString(),
@@ -308,14 +291,6 @@ async function main() {
         hedging: scores[index].hedging,
         confidence: scores[index].confidence,
       },
-    })),
+    })) as Cell[],
   };
-
-  await writeFile(OUT, `${JSON.stringify(payload, null, 2)}\n`);
-  console.log(`wrote ${OUT}`);
 }
-
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});

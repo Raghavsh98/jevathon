@@ -2,6 +2,8 @@
 
 One question. A 4×4 grid. Drag the puck and a different worldview answers.
 
+Chat on the left, grid on the right. Monochrome, light and dark.
+
 Moving the puck does not rephrase the answer — it changes who is speaking. The
 axes are hardcoded:
 
@@ -26,10 +28,18 @@ faded and blurred, high confidence cells are sharp. Hedging answers carry a dot.
 
 ```bash
 npm install
+cp .env.example .env.local   # add your keys
 npm run dev
 ```
 
 Arrow keys move the puck one cell at a time.
+
+## Asking your own question
+
+The committed set answers the demo question with zero latency. Typing a new
+question in the chat runs the same two steps live through `POST /api/ask`
+(`src/lib/pipeline.ts`) and takes about half a minute — the keys stay on the
+server. If that call fails, the grid keeps whatever it was showing.
 
 ## Regenerate the answers
 
@@ -43,6 +53,7 @@ LLM_API_KEY=... JEV_API_KEY=... npm run precompute
 JEV_API_KEY=... npm run precompute -- --score-only
 ```
 
+Same two steps as `/api/ask`, written to disk instead of served.
 The provider is detected from the key shape — OpenAI, Anthropic, Gemini, and
 Groq are supported; override with `LLM_PROVIDER` / `LLM_MODEL`. Set
 `QUESTION="..."` for a different question.

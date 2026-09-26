@@ -11,7 +11,7 @@
     }
   },
   "model": "jev-1.13.0",
-  "generatedAt": "2026-09-26T20:03:49.093Z",
+  "generatedAt": "2026-09-26T20:11:05.121Z",
   "cells": [
     {
       "id": "c-0-0",
@@ -19,13 +19,13 @@
       "row": 0,
       "x": 0.125,
       "y": 0.875,
-      "voice": "The inner call",
-      "text": "Yes. Something in you already left months ago. The job is now a costume you put on each morning, and every day you wear it the distance between who you are and what you do widens. Go, before the costume becomes the skin.",
+      "voice": "Solitary Mystic",
+      "text": "Quit immediately to honor the divine spark within you. Your soul's growth is stunted by corporate drudgery, and your primary duty is to follow your unique spiritual calling wherever it leads.",
       "jev": {
         "x": 0,
-        "y": 0.99,
+        "y": 1,
         "hedging": false,
-        "confidence": 0.98
+        "confidence": 1
       }
     },
     {
@@ -34,13 +34,13 @@
       "row": 0,
       "x": 0.375,
       "y": 0.875,
-      "voice": "The discipline of the craft",
-      "text": "Leaving is not the practice. Sitting down every day with no audience and no salary is the practice. If you cannot already do the work on the edges of your week, quitting will hand you time you have not yet learned how to hold.",
+      "voice": "Conscious Creator",
+      "text": "You must leave your job if it no longer resonates with your inner truth. Building your own thing allows you to align your energy with the universe and manifest a reality that truly feeds your spirit.",
       "jev": {
-        "x": 0.08,
-        "y": 0.71,
+        "x": 0,
+        "y": 1,
         "hedging": false,
-        "confidence": 0.61
+        "confidence": 0.99
       }
     },
     {
@@ -49,13 +49,13 @@
       "row": 0,
       "x": 0.625,
       "y": 0.875,
-      "voice": "Duty and dharma",
-      "text": "Ask what the work is for. A thing built only to prove you can build it will feel hollow at the finish. A thing that answers a need someone else carries will pull you through the years when nothing is paying. Choose the second and the question of quitting answers itself.",
+      "voice": "Sacred Community Leader",
+      "text": "Only quit if your new venture is a spiritual gift to those around you. Your personal liberation is meaningful only when it creates a sanctuary where others can also find their higher purpose.",
       "jev": {
-        "x": 0.63,
-        "y": 0.81,
+        "x": 0.8,
+        "y": 0.99,
         "hedging": false,
-        "confidence": 0.58
+        "confidence": 0.59
       }
     },
     {
@@ -64,13 +64,13 @@
       "row": 0,
       "x": 0.875,
       "y": 0.875,
-      "voice": "Indra's net",
-      "text": "No one builds their own thing. You would be standing on languages you did not invent, roads you did not lay, and the patience of people who love you. Leave if you must, but drop the word 'own'. It is the only part of the sentence that is false.",
+      "voice": "Universal Servant",
+      "text": "Abandon your private ambitions and quit only to serve the collective divine will. Your work must become a selfless sacrifice dedicated to the spiritual elevation of all humanity.",
       "jev": {
-        "x": 0.87,
-        "y": 0.9,
+        "x": 1,
+        "y": 1,
         "hedging": false,
-        "confidence": 0.62
+        "confidence": 0.99
       }
     },
     {
@@ -79,13 +79,13 @@
       "row": 1,
       "x": 0.125,
       "y": 0.625,
-      "voice": "Regret minimisation",
-      "text": "Stand at eighty and look back. The failed attempt is a story. The unmade attempt is a weight. Almost nobody regrets the leap itself; they regret the decade they spent rehearsing it.",
+      "voice": "Heroic Individualist",
+      "text": "Quit now because you owe it to yourself to see what you are truly capable of. Building your own thing is the ultimate expression of self-actualization and the only way to achieve personal greatness.",
       "jev": {
-        "x": 0.07,
-        "y": 0.85,
+        "x": 0,
+        "y": 0.97,
         "hedging": false,
-        "confidence": 0.55
+        "confidence": 0.92
       }
     },
     {
@@ -94,13 +94,13 @@
       "row": 1,
       "x": 0.375,
       "y": 0.625,
-      "voice": "Identity risk",
-      "text": "Notice how much of your sense of self is currently rented from the company. Quitting removes the title, the calendar, the people who reply to you. Some of what you call ambition may be a fear of that silence. Find out first.",
+      "voice": "Creative Pathbreaker",
+      "text": "Take the leap so you can express the unique vision that only you possess. You find your best self when you are creating something original that also inspires and uplifts your peers.",
       "jev": {
-        "x": 0.14,
-        "y": 0.87,
-        "hedging": true,
-        "confidence": 0.59
+        "x": 0.33,
+        "y": 0.91,
+        "hedging": false,
+        "confidence": 0.73
       }
     },
     {
@@ -109,13 +109,13 @@
       "row": 1,
       "x": 0.625,
       "y": 0.625,
-      "voice": "The people around you",
-      "text": "This is not your decision alone. Whoever shares your rent, your childcare, your quiet Sundays is buying a share in the risk whether or not you sell it to them. Have that conversation before the resignation letter, not after.",
+      "voice": "Social Welfare Advocate",
+      "text": "You should quit if your project addresses the spiritual and emotional needs of the community. Success is measured by how much compassion and connection your new venture brings into the world.",
       "jev": {
-        "x": 0.82,
-        "y": 0.08,
+        "x": 0.95,
+        "y": 0.95,
         "hedging": false,
-        "confidence": 0.53
+        "confidence": 0.84
       }
     },
     {
@@ -124,13 +124,13 @@
       "row": 1,
       "x": 0.875,
       "y": 0.625,
-      "voice": "Community as ground",
-      "text": "Do not leave alone. Leave toward a circle: a co-founder, a guild, three people who will notice if you disappear for a month. Solo founders do not usually fail at the product. They fail at the eighteenth quiet Tuesday.",
+      "voice": "Utopian Planner",
+      "text": "Leave your job only to build a new model of living that fosters harmony for everyone. Your individual initiative must serve as a blueprint for a more enlightened and unified society.",
       "jev": {
-        "x": 0.71,
-        "y": 0.6,
+        "x": 0.96,
+        "y": 0.97,
         "hedging": false,
-        "confidence": 0.62
+        "confidence": 0.88
       }
     },
     {
@@ -139,13 +139,13 @@
       "row": 2,
       "x": 0.125,
       "y": 0.375,
-      "voice": "Optionality",
-      "text": "Do not quit. Shrink instead. Four days a week, or a contract, or a sabbatical you have to ask awkwardly for. The all-or-nothing framing is a story founders tell afterwards; it is rarely how it happened.",
+      "voice": "Calculating Entrepreneur",
+      "text": "Quit only if you have a proven product and enough runway to ensure your personal financial independence. Logic dictates that you must secure your own material survival before chasing any creative whims.",
       "jev": {
-        "x": 0.19,
-        "y": 0.09,
+        "x": 0,
+        "y": 0,
         "hedging": false,
-        "confidence": 0.56
+        "confidence": 0.99
       }
     },
     {
@@ -154,13 +154,13 @@
       "row": 2,
       "x": 0.375,
       "y": 0.375,
-      "voice": "Evidence first",
-      "text": "What have ten strangers done with the thing so far? If the answer is nothing, you do not have a company, you have a preference. Get the evidence on nights and weekends; it is cheaper than a year of savings.",
+      "voice": "Market Realist",
+      "text": "Make the move if the data suggests your skills will fetch a higher price on the open market. Balancing your personal goals with current economic demand is the only sustainable way to succeed.",
       "jev": {
-        "x": 0.55,
-        "y": 0,
+        "x": 0.21,
+        "y": 0.05,
         "hedging": false,
-        "confidence": 0.64
+        "confidence": 0.63
       }
     },
     {
@@ -169,13 +169,13 @@
       "row": 2,
       "x": 0.625,
       "y": 0.375,
-      "voice": "Market reality",
-      "text": "Your idea is being built right now by four teams you have not heard of. That is not a reason to stop; it is a reason to be honest that speed and distribution, not the idea, are what you are actually wagering on.",
+      "voice": "Public Interest Builder",
+      "text": "Pursue your own thing if it solves a practical problem for the common good. Individual effort is most effective when it builds tangible tools that make life better for the people in your city.",
       "jev": {
-        "x": 0.53,
-        "y": 0,
+        "x": 0.73,
+        "y": 0.39,
         "hedging": false,
-        "confidence": 0.53
+        "confidence": 0.78
       }
     },
     {
@@ -184,13 +184,13 @@
       "row": 2,
       "x": 0.875,
       "y": 0.375,
-      "voice": "Who else it costs",
-      "text": "Every founder who quits on a thin runway quietly borrows from someone: a partner working overtime, parents dipping into retirement, a co-founder taking less. Name your lenders out loud. If you cannot, you are not funded, you are hiding.",
+      "voice": "Institutional Organizer",
+      "text": "You should stay where you are unless quitting allows you to build a more efficient system for the public. Your individual desires are secondary to the smooth functioning of the services society relies on.",
       "jev": {
-        "x": 0.85,
-        "y": 0.21,
+        "x": 0.95,
+        "y": 0.24,
         "hedging": false,
-        "confidence": 0.53
+        "confidence": 0.52
       }
     },
     {
@@ -199,8 +199,8 @@
       "row": 3,
       "x": 0.125,
       "y": 0.125,
-      "voice": "The runway",
-      "text": "Count the months. Fixed costs times eighteen, in cash, not in equity and not in optimism. If the number is there, quit on Monday. If it is not, you are not choosing courage over fear, you are choosing a deadline you cannot meet.",
+      "voice": "Profit Maximizer",
+      "text": "Quit the moment your own business generates a higher return on investment than your salary. Your time is a commodity, and you should always sell it to the highest bidder—which is usually yourself.",
       "jev": {
         "x": 0,
         "y": 0,
@@ -214,13 +214,13 @@
       "row": 3,
       "x": 0.375,
       "y": 0.125,
-      "voice": "Compensation math",
-      "text": "You are giving up salary plus unvested equity plus compounding, and buying a lottery ticket with a real but small payoff. Founders beat that expected value mostly when they are unusually cheap to keep alive. Are you?",
+      "voice": "Competitive Strategist",
+      "text": "Leave your job to seize a market share that your current employer is too slow to capture. Victory belongs to the individual who can most aggressively outmaneuver the competition and accumulate assets.",
       "jev": {
-        "x": 0.02,
+        "x": 0.2,
         "y": 0,
         "hedging": false,
-        "confidence": 0.94
+        "confidence": 0.6
       }
     },
     {
@@ -229,13 +229,13 @@
       "row": 3,
       "x": 0.625,
       "y": 0.125,
-      "voice": "Labour, plainly",
-      "text": "Most 'build your own thing' is the same work with the safety removed and the boss internalised. You will still answer to customers, investors, and rent. Decide whether you want autonomy or just a different set of masters.",
+      "voice": "Cooperative Architect",
+      "text": "You should only quit if you plan to build a worker-owned entity that shares its wealth. Individual ventures are fragile, but a collective material foundation ensures security and prosperity for all members.",
       "jev": {
-        "x": 0.36,
-        "y": 0.26,
+        "x": 0.92,
+        "y": 0.11,
         "hedging": false,
-        "confidence": 0.58
+        "confidence": 0.67
       }
     },
     {
@@ -244,11 +244,11 @@
       "row": 3,
       "x": 0.875,
       "y": 0.125,
-      "voice": "Household economics",
-      "text": "Run it as a household balance sheet, not a personal one. Health insurance, dependents, the mortgage rate you are locked into, the second income that has to absorb the shock. If that sheet holds for two years, go. If it does not, the answer is a date, not a no.",
+      "voice": "Proletarian Organizer",
+      "text": "Do not quit to become another boss; instead, stay and organize your workplace for the benefit of all workers. True material progress comes from collective action against the ownership class, not from starting a private business.",
       "jev": {
-        "x": 0.84,
-        "y": 0,
+        "x": 0.96,
+        "y": 0.25,
         "hedging": false,
         "confidence": 0.51
       }

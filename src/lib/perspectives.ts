@@ -18,31 +18,39 @@ export type Cell = {
   jev: JevScore;
 };
 
+export type Axes = {
+  x: { min: string; max: string };
+  y: { min: string; max: string };
+};
+
 export type Perspectives = {
   question: string;
-  axes: {
-    x: { min: string; max: string };
-    y: { min: string; max: string };
-  };
+  axes: Axes;
   model: string;
   generatedAt: string | null;
   cells: Cell[];
 };
 
-export const perspectives = data as Perspectives;
+export const AXES: Axes = {
+  x: { min: "individual", max: "collective" },
+  y: { min: "material", max: "spiritual" },
+};
 
 export const GRID = 4;
 
-export function cellAt(col: number, row: number): Cell {
-  const cell = perspectives.cells.find((c) => c.col === col && c.row === row);
+/** The demo set, precomputed and committed so the grid works with no network. */
+export const precomputed = data as Perspectives;
+
+export function cellAt(cells: Cell[], col: number, row: number): Cell {
+  const cell = cells.find((c) => c.col === col && c.row === row);
   if (!cell) throw new Error(`No cell at ${col},${row}`);
   return cell;
 }
 
-export function nearestCell(x: number, y: number): Cell {
+export function nearestCell(cells: Cell[], x: number, y: number): Cell {
   const col = Math.min(GRID - 1, Math.max(0, Math.floor(x * GRID)));
   const row = Math.min(GRID - 1, Math.max(0, Math.floor(y * GRID)));
-  return cellAt(col, row);
+  return cellAt(cells, col, row);
 }
 
 export function clamp01(value: number): number {

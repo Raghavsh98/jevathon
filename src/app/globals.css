@@ -1,19 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  --background: #08080a;
-  --foreground: #f2f0ec;
-  --muted: #8a8780;
-  --line: #24242a;
-  --accent: #e8c26a;
+  --background: #ffffff;
+  --panel: #fafafa;
+  --foreground: #0a0a0a;
+  --muted: #666666;
+  --faint: #8f8f8f;
+  --line: #eaeaea;
+  --line-strong: #d4d4d4;
+  --fill: rgba(0, 0, 0, 0.04);
+  --bubble: #f2f2f2;
+}
+
+html.dark {
+  --background: #000000;
+  --panel: #0a0a0a;
+  --foreground: #ededed;
+  --muted: #a1a1a1;
+  --faint: #7d7d7d;
+  --line: #1f1f1f;
+  --line-strong: #333333;
+  --fill: rgba(255, 255, 255, 0.06);
+  --bubble: #161616;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-panel: var(--panel);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-line: var(--line);
-  --color-accent: var(--accent);
+  --color-line-strong: var(--line-strong);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -29,4 +47,9 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--foreground);
+  color: var(--background);
 }
