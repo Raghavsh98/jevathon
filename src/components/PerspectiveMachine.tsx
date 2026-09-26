@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import Plane from "@/components/Plane";
-import { AXES, RADIUS, clamp01, type JevScore } from "@/lib/perspectives";
+import {
+  POLITICAL_COMPASS,
+  RADIUS,
+  clamp01,
+  type Frame,
+  type JevScore,
+} from "@/lib/perspectives";
 
 export type Answer = { voice: string; text: string };
 export type Point = { x: number; y: number };
@@ -14,8 +20,9 @@ type Turn =
   | { kind: "note"; text: string };
 
 type Event = {
-  type: "answer" | "nudging" | "done" | "error";
+  type: "answer" | "frame" | "nudging" | "done" | "error";
   attempt?: number;
+  frame?: Frame;
   answer?: Answer;
   jev?: JevScore;
   gap?: number;
@@ -44,6 +51,10 @@ export default function PerspectiveMachine() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [jev, setJev] = useState<JevScore | null>(null);
+  const [frame, setFrame] = useState<Frame | null>(null);
+  // "compass" plots on the Political Compass everyone knows; "auto" lets the
+  // model draw a plane for the question it was actually asked.
+  const [mode, setMode] = useState<"compass" | "auto">("compass");
   const [puck, setPuck] = useState<Point | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
@@ -75,6 +86,27 @@ export default function PerspectiveMachine() {
         if (!response.ok) throw new Error(await response.text());
 
         for await (const event of readEvents(response)) {
+          if (event.type === "frame" && event.frame) {
+            const { schools, framework, x, y } = event.frame;
+            setFrame(event.frame);
+            setTurns((current) => [
+              ...current,
+              {
+                kind: "note",
+                text: [
+                  framework
+                    ? `Framework: ${framework}`
+                    : schools.length
+                      ? `Schools of thought: ${schools.join(", ")}`
+                      : "",
+                  `Axes: ${x.min} ↔ ${x.max} · ${y.min} ↔ ${y.max}`,
+                ]
+                  .filter(Boolean)
+                  .join("\n"),
+              },
+            ]);
+            setNote("Jev is placing the answer");
+          }
           if (event.type === "nudging") {
             setNote(
               event.attempt === 1
@@ -121,15 +153,24 @@ export default function PerspectiveMachine() {
     if (!asked || busy) return;
     setDraft("");
     setTurns((current) => [...current, { kind: "question", text: asked }]);
-    void run({ question: asked }, asked);
-  }, [busy, draft, run]);
+    const chosen = mode === "compass" ? POLITICAL_COMPASS : null;
+    // A new question gets its own axes, so the old frame is dropped.
+    setFrame(chosen);
+    setJev(null);
+    setPuck(null);
+    void run(
+      chosen ? { question: asked, frame: chosen } : { question: asked },
+      asked,
+    );
+  }, [busy, draft, mode, run]);
 
   const steer = useCallback(
     (target: Point) => {
-      if (busy || !answer || !jev) return;
+      if (busy || !answer || !jev || !frame) return;
       void run(
         {
           question,
+          frame,
           answer,
           at: { x: jev.x, y: jev.y },
           target,
@@ -137,8 +178,11 @@ export default function PerspectiveMachine() {
         question,
       );
     },
-    [answer, busy, jev, question, run],
+    [answer, busy, frame, jev, question, run],
   );
+
+  // In compass mode the plane is known before anything is asked.
+  const shown = frame ?? (mode === "compass" ? POLITICAL_COMPASS : null);
 
   return (
     <main className="flex h-dvh w-full flex-col overflow-hidden lg:flex-row">
@@ -162,8 +206,10 @@ export default function PerspectiveMachine() {
           className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6"
         >
           {turns.length === 0 && !note && (
-            <p className="m-auto max-w-[32ch] text-center text-[14px] leading-relaxed text-[var(--faint)]">
-              Ask anything. Jev will place the answer on the plane.
+            <p className="m-auto max-w-[34ch] text-center text-[14px] leading-relaxed text-[var(--faint)]">
+              {mode === "compass"
+                ? "Ask anything. The answer gets plotted on the Political Compass, and you can drag it somewhere else."
+                : "Ask anything. The model works out what people disagree about in your question, and those become the axes of the plane."}
             </p>
           )}
 
@@ -175,7 +221,10 @@ export default function PerspectiveMachine() {
                 </p>
               </div>
             ) : turn.kind === "note" ? (
-              <p key={index} className="font-mono text-[11px] text-[var(--faint)]">
+              <p
+                key={index}
+                className="whitespace-pre-line font-mono text-[11px] leading-relaxed text-[var(--faint)]"
+              >
                 {turn.text}
               </p>
             ) : (
@@ -246,12 +295,42 @@ export default function PerspectiveMachine() {
         </form>
       </section>
 
-      <section className="flex min-h-0 flex-1 items-center justify-center p-8 lg:p-12">
+      <section className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-8 lg:p-12">
+        <div className="flex rounded-lg border border-[var(--line-strong)] p-0.5">
+          {(
+            [
+              ["compass", "Political compass"],
+              ["auto", "Create your own"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (value === mode) return;
+                setMode(value);
+                // The old plane means nothing on the new one.
+                setFrame(null);
+                setJev(null);
+                setPuck(null);
+              }}
+              className={`rounded-md px-3 py-1.5 text-[12px] transition-colors disabled:opacity-40 ${
+                mode === value
+                  ? "bg-[var(--foreground)] text-[var(--background)]"
+                  : "text-[var(--faint)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="w-full max-w-[540px]">
           <div className="mb-3 flex items-baseline justify-between font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--faint)]">
-            <span>{AXES.x.min}</span>
-            <span>{AXES.y.max}</span>
-            <span>{AXES.x.max}</span>
+            <span>{shown?.x.min ?? ""}</span>
+            <span>{shown?.y.max ?? ""}</span>
+            <span>{shown?.x.max ?? ""}</span>
           </div>
 
           <Plane
@@ -267,7 +346,9 @@ export default function PerspectiveMachine() {
 
           <div className="mt-3 flex items-baseline justify-between font-mono text-[11px] text-[var(--faint)]">
             <span className="uppercase tracking-[0.14em]">&nbsp;</span>
-            <span className="uppercase tracking-[0.14em]">{AXES.y.min}</span>
+            <span className="uppercase tracking-[0.14em]">
+              {shown?.y.min ?? ""}
+            </span>
             <span>
               {puck ? `puck ${puck.x.toFixed(2)}, ${puck.y.toFixed(2)}` : ""}
             </span>

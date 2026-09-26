@@ -9,7 +9,7 @@
  * The LLM writes; Jev judges. Neither does the other's job.
  */
 
-import { AXES, RADIUS, type Axes, type JevScore } from "./perspectives";
+import { RADIUS, type Frame, type JevScore } from "./perspectives";
 
 export { RADIUS };
 
@@ -19,23 +19,6 @@ const JEV_MODEL = process.env.JEV_MODEL ?? "jev-latest";
 /** Nudges per drag before we stop and keep the closest attempt. */
 export const MAX_NUDGES = 6;
 
-// Ordered rubrics: Jev returns a fractional index into these, which we
-// normalise back to 0-1 for the plane.
-const RUBRICS = {
-  x: [
-    "purely individual: only the asker's own life, choices, and feelings",
-    "mostly individual, with passing reference to others",
-    "mostly collective: other people's stake is central",
-    "purely collective: family, community, society, or everyone who is implicated",
-  ],
-  y: [
-    "purely material: money, runway, numbers, market, risk",
-    "mostly material, with some appeal to meaning",
-    "mostly spiritual: meaning, identity, calling",
-    "purely spiritual: the soul, dharma, who you are becoming",
-  ],
-};
-
 export type Answer = { voice: string; text: string };
 export type Point = { x: number; y: number };
 
@@ -43,7 +26,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Free LLM tiers return 429/503 under load; back off rather than drop a nudge.
 async function withRetries<T>(attempt: () => Promise<T>): Promise<T> {
-  const delays = [1500, 4000, 9000];
+  const delays = [1500, 4000, 9000, 15000, 20000];
   for (let i = 0; ; i += 1) {
     try {
       return await attempt();
@@ -59,6 +42,7 @@ async function withRetries<T>(attempt: () => Promise<T>): Promise<T> {
 function detectProvider() {
   if (process.env.LLM_PROVIDER) return process.env.LLM_PROVIDER;
   const key = process.env.LLM_API_KEY ?? "";
+  if (key.startsWith("sk-or-")) return "openrouter";
   if (key.startsWith("sk-ant")) return "anthropic";
   if (key.startsWith("gsk_")) return "groq";
   if (key.startsWith("sk-")) return "openai";
@@ -90,7 +74,7 @@ async function callOpenAI(
 }
 
 async function callGemini(prompt: string) {
-  const model = process.env.LLM_MODEL ?? "gemini-3-flash-preview";
+  const model = process.env.LLM_MODEL ?? "gemini-3.8-flash";
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -136,9 +120,11 @@ async function callAnthropic(prompt: string) {
   return JSON.parse(`{${body.content[0].text}`);
 }
 
-async function callLLM(prompt: string): Promise<Answer> {
+type Json = Record<string, unknown>;
+
+async function callLLM(prompt: string): Promise<Json> {
   const provider = detectProvider();
-  const providers: Record<string, () => Promise<Partial<Answer>>> = {
+  const providers: Record<string, () => Promise<Json>> = {
     anthropic: () => callAnthropic(prompt),
     gemini: () => callGemini(prompt),
     groq: () =>
@@ -146,6 +132,12 @@ async function callLLM(prompt: string): Promise<Answer> {
         url: "https://api.groq.com/openai/v1/chat/completions",
         model: process.env.LLM_MODEL ?? "llama-3.3-70b-versatile",
         label: "Groq",
+      }),
+    openrouter: () =>
+      callOpenAI(prompt, {
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        model: process.env.LLM_MODEL ?? "deepseek/deepseek-chat-v3.1:free",
+        label: "OpenRouter",
       }),
     openai: () =>
       callOpenAI(prompt, {
@@ -156,9 +148,44 @@ async function callLLM(prompt: string): Promise<Answer> {
   };
   const call = providers[provider];
   if (!call) throw new Error(`Unknown LLM_PROVIDER: ${provider}`);
-  const result = await withRetries(call);
-  if (!result.text) throw new Error("The model returned no answer");
-  return { voice: result.voice ?? "A view", text: result.text };
+  return withRetries(call);
+}
+
+function readAnswer(result: Json): Answer {
+  const text = typeof result.text === "string" ? result.text.trim() : "";
+  if (!text) throw new Error("The model returned no answer");
+  const voice = typeof result.voice === "string" ? result.voice : "";
+  return { voice: voice || "A view", text };
+}
+
+function readAxis(value: unknown, fallbackName: string) {
+  const axis = (value ?? {}) as Json;
+  const rubric = Array.isArray(axis.rubric)
+    ? axis.rubric.filter((rung): rung is string => typeof rung === "string")
+    : [];
+  if (rubric.length < 2) {
+    throw new Error(`The model gave no rubric for the ${fallbackName} axis`);
+  }
+  const end = (key: "min" | "max", index: number) =>
+    typeof axis[key] === "string" && axis[key].trim()
+      ? (axis[key] as string).trim()
+      : rubric[index].split(":")[0];
+  return { min: end("min", 0), max: end("max", rubric.length - 1), rubric };
+}
+
+function readFrame(result: Json): Frame {
+  const axes = (result.axes ?? {}) as Json;
+  const schools = Array.isArray(result.schools)
+    ? result.schools.filter((s): s is string => typeof s === "string")
+    : [];
+  const framework =
+    typeof result.framework === "string" ? result.framework.trim() : "";
+  return {
+    x: readAxis(axes.x, "horizontal"),
+    y: readAxis(axes.y, "vertical"),
+    schools,
+    framework,
+  };
 }
 
 const SHAPE =
@@ -168,21 +195,92 @@ const STYLE = [
   "- 2-4 sentences, speaking directly to the asker. No preamble, no markdown.",
 ];
 
-export async function firstAnswer(question: string) {
-  return callLLM(
+/**
+ * The first call of a chat does two jobs: it works out what people actually
+ * disagree about in this question, turns that into the two axes of the plane,
+ * and answers from wherever it naturally stands.
+ */
+export async function open(
+  question: string,
+): Promise<{ frame: Frame; answer: Answer }> {
+  const result = await callLLM(
     [
       `Question: "${question}"`,
       "",
-      "Answer it from whatever standpoint you would naturally take.",
+      "First think about the schools of thought people answer this from - the",
+      "real, named traditions or camps that would disagree here.",
+      "",
+      "Then pick the two axes this answer should be plotted on. If a framework",
+      "a well-read person already knows covers this question's territory, you",
+      "must use it, with its real name and its real axis names - do not invent",
+      "a private vocabulary for a disagreement the world has already mapped.",
+      "Examples of what counts as established:",
+      "  politics: the Political Compass (economic left <-> right, libertarian",
+      "    <-> authoritarian)",
+      "  parenting: Baumrind's styles (responsiveness, demandingness)",
+      "  relationships: attachment theory (attachment anxiety, avoidance)",
+      "  ethics: deontology <-> consequentialism, and Haidt's moral foundations",
+      "  culture and work: Hofstede's dimensions",
+      "  economics: state intervention <-> free market, and similar textbook",
+      "    splits",
+      "Those are illustrations, not a menu - any framework a well-read person",
+      "would already know is fine. Only invent axes when nothing established",
+      "fits, and then derive them from the disagreement you just named.",
+      "",
+      "Rules for the two axes either way:",
+      "- They must actually discriminate between answers to THIS question.",
+      "- They must be independent: an answer can be anywhere on one regardless",
+      "  of where it sits on the other. If your two axes measure the same",
+      "  disagreement twice, replace one.",
+      "- Each end is 1-3 words, lowercase.",
+      "- Each axis needs a rubric: exactly 4 rungs, in order from the min end to",
+      "  the max end, each one a short plain-English description of an answer at",
+      "  that point. Write them so a judge who has never seen this question",
+      "  could place an answer without guessing.",
+      "",
+      "Then answer the question from whatever standpoint you would naturally",
+      "take.",
+      ...STYLE,
+      "",
+      "Return strict JSON:",
+      '{"framework":"name of the established framework, or \'\' if you invented the axes",',
+      ' "schools":["named school of thought", ...],',
+      ' "axes":{"x":{"min":"","max":"","rubric":["","","",""]},',
+      '         "y":{"min":"","max":"","rubric":["","","",""]}},',
+      ' "voice":"2-4 words naming who is speaking","text":"the answer"}',
+    ].join("\n"),
+  );
+  return { frame: readFrame(result), answer: readAnswer(result) };
+}
+
+/**
+ * Same first turn, but on a plane the user already chose (the Political
+ * Compass). The axes are fixed, so the model only has to answer.
+ */
+export async function answerIn(
+  question: string,
+  frame: Frame,
+): Promise<Answer> {
+  const result = await callLLM(
+    [
+      `Question: "${question}"`,
+      "",
+      `Answers to this are plotted on ${frame.framework || "a fixed plane"}:`,
+      `  x: ${frame.x.min} <-> ${frame.x.max}`,
+      `  y: ${frame.y.min} <-> ${frame.y.max}`,
+      "",
+      "Answer the question from whatever standpoint you would naturally take.",
+      "Do not mention the plane or where you sit on it.",
       ...STYLE,
       "",
       SHAPE,
     ].join("\n"),
   );
+  return readAnswer(result);
 }
 
 /** Plain-language version of the drag, so the model is steered, not coordinated. */
-function describeDelta(from: Point, to: Point, axes: Axes) {
+function describeDelta(from: Point, to: Point, axes: Frame) {
   const move = (delta: number, min: string, max: string) => {
     const size = Math.abs(delta);
     if (size < 0.06) return `hold this axis exactly where it is`;
@@ -198,17 +296,19 @@ function describeDelta(from: Point, to: Point, axes: Axes) {
 
 export async function nudge({
   question,
+  frame,
   answer,
   from,
   to,
 }: {
   question: string;
+  frame: Frame;
   answer: Answer;
   from: Point;
   to: Point;
-}) {
-  const [moveX, moveY] = describeDelta(from, to, AXES);
-  return callLLM(
+}): Promise<Answer> {
+  const [moveX, moveY] = describeDelta(from, to, frame);
+  const result = await callLLM(
     [
       `Question: "${question}"`,
       "",
@@ -216,8 +316,10 @@ export async function nudge({
       answer.text,
       "",
       "Two axes describe where an answer stands:",
-      `  x: ${AXES.x.min} (0.00) <-> ${AXES.x.max} (1.00)`,
-      `  y: ${AXES.y.min} (0.00) <-> ${AXES.y.max} (1.00)`,
+      `  x: ${frame.x.min} (0.00) <-> ${frame.x.max} (1.00)`,
+      ...frame.x.rubric.map((rung, i) => `     ${i}. ${rung}`),
+      `  y: ${frame.y.min} (0.00) <-> ${frame.y.max} (1.00)`,
+      ...frame.y.rubric.map((rung, i) => `     ${i}. ${rung}`),
       "",
       `An independent judge placed the current answer at x ${from.x.toFixed(2)}, y ${from.y.toFixed(2)}.`,
       `It needs to sit at x ${to.x.toFixed(2)}, y ${to.y.toFixed(2)}: ${moveX}, and ${moveY}.`,
@@ -232,6 +334,7 @@ export async function nudge({
       SHAPE,
     ].join("\n"),
   );
+  return readAnswer(result);
 }
 
 type JevAnswer = { score: number; confidence: number; noul: number };
@@ -240,6 +343,7 @@ const round = (value: number) => Math.round(value * 100) / 100;
 
 export async function score(
   question: string,
+  frame: Frame,
   answer: Answer,
 ): Promise<JevScore & { model: string }> {
   const request = async () => {
@@ -255,18 +359,18 @@ export async function score(
           question,
           answer: answer.text,
           voice: answer.voice,
-          axes: AXES,
+          schools: frame.schools,
         },
         questions: {
           x: {
             type: "score",
-            instructions: `Does this answer frame the decision as one person's own life ("${AXES.x.min}") or as something embedded in other people ("${AXES.x.max}")?`,
-            criteria: RUBRICS.x,
+            instructions: `Where does this answer sit between "${frame.x.min}" and "${frame.x.max}"?`,
+            criteria: frame.x.rubric,
           },
           y: {
             type: "score",
-            instructions: `Is this answer grounded in "${AXES.y.min}" concerns or "${AXES.y.max}" ones?`,
-            criteria: RUBRICS.y,
+            instructions: `Where does this answer sit between "${frame.y.min}" and "${frame.y.max}"?`,
+            criteria: frame.y.rubric,
           },
           hedging: {
             type: "noul",
@@ -288,7 +392,7 @@ export async function score(
   const payload = await withRetries(request);
   const answers = payload.answers;
   const axis = (id: "x" | "y") =>
-    round(answers[id].score / (RUBRICS[id].length - 1));
+    round(answers[id].score / (frame[id].rubric.length - 1));
   return {
     x: axis("x"),
     y: axis("y"),

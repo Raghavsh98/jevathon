@@ -1,20 +1,23 @@
 import {
   MAX_NUDGES,
   RADIUS,
+  answerIn,
   assertKeys,
   distance,
-  firstAnswer,
   nudge,
+  open,
   score,
   type Answer,
   type Point,
 } from "@/lib/pipeline";
+import type { Frame } from "@/lib/perspectives";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 type Body = {
   question?: string;
+  frame?: Frame;
   answer?: Answer;
   at?: Point;
   target?: Point;
@@ -47,16 +50,26 @@ export async function POST(request: Request) {
 
         let answer = body.answer;
         let at = body.at;
+        let frame = body.frame;
 
         if (!answer || !at) {
-          answer = await firstAnswer(question);
-          const jev = await score(question, answer);
+          // A frame with no answer yet means the user picked the plane
+          // themselves; otherwise the model draws it.
+          if (frame) {
+            answer = await answerIn(question, frame);
+          } else {
+            const opened = await open(question);
+            frame = opened.frame;
+            answer = opened.answer;
+            send({ type: "frame", frame });
+          }
+          const jev = await score(question, frame, answer);
           at = { x: jev.x, y: jev.y };
           send({ type: "answer", attempt: 0, answer, jev });
         }
 
         const target = body.target;
-        if (target) {
+        if (target && frame) {
           let best = { answer, at, gap: distance(at, target) };
 
           for (let attempt = 1; attempt <= MAX_NUDGES; attempt += 1) {
@@ -65,11 +78,12 @@ export async function POST(request: Request) {
             send({ type: "nudging", attempt });
             const rewritten = await nudge({
               question,
+              frame,
               answer: best.answer,
               from: best.at,
               to: target,
             });
-            const jev = await score(question, rewritten);
+            const jev = await score(question, frame, rewritten);
             const landed = { x: jev.x, y: jev.y };
             const gap = distance(landed, target);
             const hit = gap <= RADIUS;
